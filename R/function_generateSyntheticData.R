@@ -45,7 +45,7 @@ setParameters <- function(){
                           nKataegisMuts = c(6, 10, 25, 50),
                           expectedIMD = c(100, 250, 500, 750)
         )
-    ) %>%
+    ) |>
         dplyr::mutate(
             parmNames = sprintf('%s_%s_%s_%s%s', .data$nBackgroundMuts, .data$nKataegisFoci, .data$nKataegisMuts, .data$expectedIMD, base::ifelse(base::is.na(.data$iteration), '', paste0('_(', .data$iteration, ')')))
         )
@@ -130,12 +130,12 @@ getKataegisInformation <- function(syntheticData){
 convertoMafSynth <- function(syntheticData){
 
     # Convert to MAF format (for maftools) ----
-    syntheticDataMAF <- tibble::as_tibble(base::unlist(syntheticData)) %>%
+    syntheticDataMAF <- tibble::as_tibble(base::unlist(syntheticData)) |>
         dplyr::mutate(
             Hugo_Symbol = 'Unknown',
             Variant_Classification = 'Missense_Mutation',
             Variant_Type = 'SNP',
-        ) %>%
+        ) |>
         dplyr::select(
             Hugo_Symbol,
             Chromosome = .data$seqnames,

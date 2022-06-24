@@ -1,5 +1,6 @@
-
-library(SeqKat)
+library("VariantAnnotation")
+library("dplyr")
+library("SeqKat")
 source(file = "./R/function_package_workflows.R")
 
 # counter to keep track of progress

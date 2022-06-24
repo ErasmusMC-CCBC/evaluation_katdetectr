@@ -12,8 +12,6 @@ library(dplyr)
 ```
 
 
-
-
 ```{r}
 load(file = "../results/resultsSyntheticAllTools.RData")
 load(file = "../data/parameters_synthetic_data.RData")
@@ -22,23 +20,24 @@ source(file = "./function_calculateMetrics.R")
 source(file = "./function_calculateConfusionVariants.R")
 ```
 
+
 Descriptive statistics of the synthetic data
 ```{r}
-descriptive_synthetic_data <- dataSynthetic$reportedKataegisFoci %>% 
-  filter(kataegis) %>% 
-  left_join(parameters, by = c("sampleNames" = "parmNames")) %>% 
-  group_by(sampleNames) %>% 
-  mutate(
-    totalVariantsSample = sum(totalVariants)
-  ) %>% 
-  ungroup() %>% 
-  dplyr::select(!c(start, end, totalVariants)) %>% 
-  distinct() %>% 
-  group_by(nBackgroundMuts) %>% 
-  summarise(
-    totalVariantsTMB = sum(totalVariantsSample),
-    nKataegisFociTMB = sum(nKataegisFoci)
-  )
+descriptive_synthetic_data <- dataSynthetic$reportedKataegisFoci |> 
+    filter(kataegis) |> 
+    left_join(parameters, by = c("sampleNames" = "parmNames")) |> 
+    group_by(sampleNames) |> 
+    mutate(
+        totalVariantsSample = sum(totalVariants)
+    ) |> 
+    ungroup() |> 
+    dplyr::select(!c(start, end, totalVariants)) |> 
+    distinct() |> 
+    group_by(nBackgroundMuts) |> 
+    summarise(
+        totalVariantsTMB = sum(totalVariantsSample),
+        nKataegisFociTMB = sum(nKataegisFoci)
+    )
 ```
 
 
@@ -51,84 +50,87 @@ resultsSynthetic <- dplyr::bind_rows("kataegis" = resultsSyntheticAllTools$katae
                                      "SeqKat" = resultsSyntheticAllTools$seqkat,
                                      "ClusteredMutations" = resultsSyntheticAllTools$clusteredMutations,
                                      "katdetectr" = resultsSyntheticAllTools$katdetectr,
-                                     .id = "package") %>% 
-  # join the parameters setting used for generating the synthethic data
-  dplyr::left_join(dplyr::select(parameters, parmNames, nBackgroundMuts), by = c("sampleNames" = "parmNames")) %>% 
-  # join the information of the generated kataegis foci
-  dplyr::left_join(dplyr::select(dataSynthetic$reportedKataegisFoci, sampleNames, kataegis), by = "sampleNames") %>% 
-  # remove duplicate rows
-  dplyr::distinct() %>% 
-  dplyr::mutate(
-    # add column which specifies if a kataegis event was detected by the method
-    detectedKataegisInSample = dplyr::if_else(is.na(.data$totalVariants), FALSE, TRUE),
-    # add column which specifies tumor mutational burden (TMB)
-    TMB = dplyr::case_when(
-      nBackgroundMuts == 25 ~ 0.1,
-      nBackgroundMuts == 125 ~ 0.5,
-      nBackgroundMuts == 249 ~ 1,
-      nBackgroundMuts == 1246 ~ 5,
-      nBackgroundMuts == 2493 ~ 10,
-      nBackgroundMuts == 12463 ~ 50,
-      nBackgroundMuts == 24925 ~ 100,
-      nBackgroundMuts == 124625 ~ 500
-    )
-  ) %>% 
-  # make more clear that the kataegis column only specifies if the sample contains a kataegis event
-  dplyr::rename(kataegisInSample = kataegis)
+                                     "SigProfilerClusters" = resultsSyntheticAllTools$sigProfilerClusters,
+                                     .id = "package") |> 
+    # join the parameters setting used for generating the synthethic data
+    dplyr::left_join(dplyr::select(parameters, parmNames, nBackgroundMuts), by = c("sampleNames" = "parmNames")) |> 
+    # join the information of the generated kataegis foci
+    dplyr::left_join(dplyr::select(dataSynthetic$reportedKataegisFoci, sampleNames, kataegis), by = "sampleNames") |> 
+    # remove duplicate rows
+    dplyr::distinct() |> 
+    dplyr::mutate(
+        # add column which specifies if a kataegis event was detected by the method
+        detectedKataegisInSample = dplyr::if_else(is.na(.data$totalVariants), FALSE, TRUE),
+        # add column which specifies tumor mutational burden (TMB)
+        TMB = dplyr::case_when(
+            nBackgroundMuts == 25 ~ 0.1,
+            nBackgroundMuts == 125 ~ 0.5,
+            nBackgroundMuts == 249 ~ 1,
+            nBackgroundMuts == 1246 ~ 5,
+            nBackgroundMuts == 2493 ~ 10,
+            nBackgroundMuts == 12463 ~ 50,
+            nBackgroundMuts == 24925 ~ 100,
+            nBackgroundMuts == 124625 ~ 500
+        )
+    ) |> 
+    # make more clear that the kataegis column only specifies if the sample contains a kataegis event
+    dplyr::rename(kataegisInSample = kataegis)
 ```
 
 Calculate the performance of the kataegis detection tools regarding sample classfication on the synthetic dataset
 ```{r}
-resultsPerSample <- resultsSynthetic %>% 
-  # summarise if a method detected kataegis in a sample
-  group_by(package, sampleNames, runTime) %>% 
-  summarise(
-    .groups = "keep",
-    # is a kataegis foci detected by the method
-    detectedKataegisInSample = any(detectedKataegisInSample),
-    # is there actualy a kataegis foci in that sample
-    kataegisInSample = any(kataegisInSample),
-    # Tumor mutational burden of sample
-    TMB = unique(TMB)
-  ) %>% 
-  ungroup() %>% 
-  rowwise() %>% 
-  # calculate confusion matrix
-  mutate(
-    TP = detectedKataegisInSample == TRUE & kataegisInSample == TRUE,
-    FP = detectedKataegisInSample == TRUE & kataegisInSample == FALSE,
-    TN = detectedKataegisInSample == FALSE & kataegisInSample == FALSE,
-    FN = detectedKataegisInSample == FALSE & kataegisInSample == TRUE
-  ) %>% 
-  ungroup()
+resultsPerSample <- resultsSynthetic |> 
+    # summarise if a method detected kataegis in a sample
+    group_by(package, sampleNames, runTime) |> 
+    summarise(
+        .groups = "keep",
+        # is a kataegis foci detected by the method
+        detectedKataegisInSample = any(detectedKataegisInSample),
+        # is there actualy a kataegis foci in that sample
+        kataegisInSample = any(kataegisInSample),
+        # Tumor mutational burden of sample
+        TMB = unique(TMB)
+    ) |> 
+    ungroup() |> 
+    rowwise() |> 
+    # calculate confusion matrix
+    mutate(
+        TP = detectedKataegisInSample == TRUE & kataegisInSample == TRUE,
+        FP = detectedKataegisInSample == TRUE & kataegisInSample == FALSE,
+        TN = detectedKataegisInSample == FALSE & kataegisInSample == FALSE,
+        FN = detectedKataegisInSample == FALSE & kataegisInSample == TRUE
+    ) |> 
+    ungroup()
 
 # performance of each package over the whole dataset
-performancePerSample <- resultsPerSample %>% 
-  group_by(package) %>% 
-  dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) %>% 
-  ungroup()
+performancePerSample <- resultsPerSample |> 
+    group_by(package) |> 
+    dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) |> 
+    ungroup()
 
-performancePerSampleTMB <- resultsPerSample %>% 
-  group_by(package, TMB) %>% 
-  dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) %>% 
-  ungroup()
+performancePerSampleTMB <- resultsPerSample |> 
+    group_by(package, TMB) |> 
+    dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) |> 
+    ungroup()
 ```
 
 ```{r}
-resultsPerVariant <- resultsSynthetic %>%
-  dplyr::group_by(package, sampleNames) %>%
-  dplyr::group_modify(~ calculateConfusionVariants(.x, variantData = dataSynthetic), keep = TRUE) %>%
-  ungroup()
+resultsPerVariant <- resultsSynthetic |>
+    dplyr::group_by(package, sampleNames) |>
+    dplyr::group_modify(~ calculateConfusionVariants(.x, variantData = dataSynthetic), keep = TRUE) |>
+    ungroup()
 
-performancePerVariant <- resultsPerVariant %>% 
-  group_by(package) %>% 
-  dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) %>% 
-  ungroup()
+performancePerVariant <- resultsPerVariant |> 
+    group_by(package) |> 
+    dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) |> 
+    ungroup()|>  
+    arrange(desc(nMCC)) |> 
+    select(package, accuracy, nMCC, F1, TPR, TNR)
 
-performancePerVariantTMB <- resultsPerVariant %>% 
-  group_by(package, TMB) %>% 
-  dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) %>% 
-  ungroup()
+performancePerVariantTMB <- resultsPerVariant |> 
+    group_by(package, TMB) |> 
+    dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) |> 
+    ungroup()
 ```
 
 
@@ -137,31 +139,31 @@ performancePerVariantTMB <- resultsPerVariant %>%
 TMB.labs <- c("TMB: 500", "TMB: 100", "TMB: 50", "TMB: 10", "TMB: 5", "TMB: 1", "TMB: 0.5", "TMB: 0.1")
 names(TMB.labs) <- c(500, 100, 50, 10, 5, 1, 0.5, 0.1)
 
-plotPerformancePerVariantTMB <- performancePerVariantTMB %>% 
-  tidyr::pivot_longer(
-    cols = c(accuracy, TPR, TNR, F1, nMCC),
-    names_to = "performanceMetric",
-    values_to = "value"
-  ) %>% 
-  mutate(TMB = factor(TMB, levels = c(500, 100, 50, 10, 5, 1, 0.5, 0.1))) %>% 
-  ggplot2::ggplot(aes(y = factor(package, levels = arrange(performancePerVariant, nMCC)$package), 
-                      x = factor(performanceMetric, levels = c("accuracy", "nMCC", "F1", "TPR", "TNR")), 
-                      label = round(value, 4), 
-                      fill = value)) +
-  ggplot2::geom_tile(color = 'grey25') +
-  scale_fill_gradientn(colors = hcl.colors(20, "RdYlGn"), values = c(0,0.5,1)) +
-  ggplot2::ylab("Package") +
-  ggplot2::xlab("Performance on synthetic data split on TMB") +
-  scale_x_discrete(position = "top") +
-  theme(
-    axis.text.x = element_text(angle = 0, ),
-    text = ggplot2::element_text(size=5, family='Helvetica'),
-    strip.background = ggplot2::element_blank(),
-    panel.background = element_blank(),
-    legend.title = element_blank()
-  ) +
-  ggplot2::geom_text(size = 1.5, angle = 0) +
-  facet_grid(TMB ~ ., labeller = labeller(TMB = rev(TMB.labs)))
+plotPerformancePerVariantTMB <- performancePerVariantTMB |> 
+    tidyr::pivot_longer(
+        cols = c(accuracy, TPR, TNR, F1, nMCC),
+        names_to = "performanceMetric",
+        values_to = "value"
+    ) |> 
+    mutate(TMB = factor(TMB, levels = c(500, 100, 50, 10, 5, 1, 0.5, 0.1))) |> 
+    ggplot2::ggplot(aes(y = factor(package, levels = arrange(performancePerVariant, nMCC)$package), 
+                        x = factor(performanceMetric, levels = c("accuracy", "nMCC", "F1", "TPR", "TNR")), 
+                        label = round(value, 4), 
+                        fill = value)) +
+    ggplot2::geom_tile(color = 'grey25') +
+    scale_fill_gradientn(colors = hcl.colors(20, "RdYlGn"), values = c(0,0.5,1)) +
+    ggplot2::ylab("Package") +
+    ggplot2::xlab("Performance on synthetic data split on TMB") +
+    scale_x_discrete(position = "top") +
+    theme(
+        axis.text.x = element_text(angle = 0, ),
+        text = ggplot2::element_text(size=5, family='Helvetica'),
+        strip.background = ggplot2::element_blank(),
+        panel.background = element_blank(),
+        legend.title = element_blank()
+    ) +
+    ggplot2::geom_text(size = 1.5, angle = 0) +
+    facet_grid(TMB ~ ., labeller = labeller(TMB = rev(TMB.labs)))
 
 ggsave(file = "../figures/plotSyntheticDataPerformancePerVariantTMB.jpeg", plotPerformancePerVariantTMB, width = 3.5)
 #ggsave(file = "../figures/plotSyntheticDataPerformancePerVariantTMB.svg", plotPerformancePerVariantTMB, width = 3.5)
@@ -173,42 +175,42 @@ detectedKataegisInSample.labs <- c("Kataegis Samples", "Non Kataegis Samples")
 names(detectedKataegisInSample.labs) <- c(TRUE, FALSE)
 
 # Total runtimes of all PCF methods 
-plotRunTimesTotal <- resultsPerSample %>% 
-  ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60)) + 
-  geom_boxplot(outlier.size = 0.5) +
-  ggplot2::ylab("Run times (minutes)") +
-  ggplot2::xlab("Package name") +
-  ggtitle("Total runtimes of kataegis detection tools") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+plotRunTimesTotal <- resultsPerSample |> 
+    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60)) + 
+    geom_boxplot(outlier.size = 0.5) +
+    ggplot2::ylab("Run times (minutes)") +
+    ggplot2::xlab("Package name") +
+    ggtitle("Total runtimes of kataegis detection tools") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
 
 ggsave(file = "../figures/plotSyntheticRuntimesTotal.jpeg", plotRunTimesTotal, width = 12, height = 4)
 
 # runtimes of PCF methods split on kataegis in sample and TMB
-plotRunTimesSplit <- resultsPerSample %>% 
-  ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60)) + 
-  geom_boxplot() +
-  ggplot2::ylab("Run times (minutes)") +
-  ggplot2::xlab("Package name") +
-  ggtitle("Runtimes of kataegis detection tools split on TMB and kataegis samples") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6)) +
-  facet_grid(detectedKataegisInSample~TMB, labeller = labeller(detectedKataegisInSample = detectedKataegisInSample.labs, TMB = TMB.labs))
+plotRunTimesSplit <- resultsPerSample |> 
+    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60)) + 
+    geom_boxplot() +
+    ggplot2::ylab("Run times (minutes)") +
+    ggplot2::xlab("Package name") +
+    ggtitle("Runtimes of kataegis detection tools split on TMB and kataegis samples") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6)) +
+    facet_grid(detectedKataegisInSample~TMB, labeller = labeller(detectedKataegisInSample = detectedKataegisInSample.labs, TMB = TMB.labs))
 
 #ggsave(file = "../../thesis/figures/png_and_jpeg_images/plotSyntheticRuntimesSplit.jpeg", plotRunTimesSplit, width = 12, height = 5)
 
 # scaled runtimes of PCF methods split on kataegis in sample and TMB
-plotRunTimesSplitScaled <- resultsPerSample %>% 
-  group_by(TMB, kataegisInSample) %>% 
-  mutate(runTimeScale = (runTime- min(runTime)) /(max(runTime)-min(runTime))
-  ) %>%
-  ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTimeScale)) + 
-  geom_boxplot() +
-  ggplot2::ylab("Scaled run times") +
-  ggplot2::xlab("Package name") +
-  ggtitle("Scaled PCF runtimes split on TMB and  and kataegis samples") +
-  #theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6)) +
-   theme_bw() +
-   #theme_replace(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
-  facet_grid(detectedKataegisInSample~TMB, labeller = labeller(detectedKataegisInSample = detectedKataegisInSample.labs, TMB = TMB.labs))
+plotRunTimesSplitScaled <- resultsPerSample |> 
+    group_by(TMB, kataegisInSample) |> 
+    mutate(runTimeScale = (runTime- min(runTime)) /(max(runTime)-min(runTime))
+    ) |>
+    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTimeScale)) + 
+    geom_boxplot() +
+    ggplot2::ylab("Scaled run times") +
+    ggplot2::xlab("Package name") +
+    ggtitle("Scaled PCF runtimes split on TMB and  and kataegis samples") +
+    #theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6)) +
+    theme_bw() +
+    #theme_replace(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+    facet_grid(detectedKataegisInSample~TMB, labeller = labeller(detectedKataegisInSample = detectedKataegisInSample.labs, TMB = TMB.labs))
 
 #ggsave(file = "../../thesis/figures/png_and_jpeg_images/plotSyntheticKatDetectSplitScaled.jpeg", plotRunTimesSplitScaled, width = 12, height = 5)
 #ggsave(file = "../../thesis/figures/svg_images/plotSyntheticKatDetectSplitScaled.svg", plotRunTimesSplitScaled, width = 12, height = 5)

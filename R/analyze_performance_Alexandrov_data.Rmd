@@ -20,9 +20,6 @@ source(file = "./function_calculateMetrics.R")
 source(file = "./function_calculateConfusionVariants.R")
 ```
 
-
-
-
 Descriptive statistic of the WGS samples in the alexandrov dataset
 ```{r}
 fociPerSample <- alexandrovData$reportedKataegis |> 
@@ -61,7 +58,6 @@ alexandrovData$genomicVariants |>
     )
 ```
 
-
 put all results in a single dataframe and add columns needed for further analysis
 ```{r}
 kataegisSampleNames <- base::unique(alexandrovData$reportedKataegisFoci$sampleNames)
@@ -75,6 +71,7 @@ resultsAlex <- dplyr::bind_rows(
     "ClusteredMutations" = resultsAlexandrovAllTools$clusteredMutations,
     "katdetectr" = resultsAlexandrovAllTools$katdetectr,
     "kataegis" = resultsAlexandrovAllTools$kataegis,
+    "SigProfilerClusters" = resultsAlexandrovAllTools$sigProfilerClusters,
     .id = "package") |> 
     dplyr::distinct() |> 
     dplyr::left_join(nVariantsInSampleTib, by = "sampleNames") |> 
@@ -83,8 +80,8 @@ resultsAlex <- dplyr::bind_rows(
         TMB = base::round(totalVariantsInSample / 3095, 3),
         TMBcat = dplyr::case_when(
             TMB < 1 ~ "low",
-            TMB >= 1 & TMB < 5 ~ "mid",
-            TMB > 5 ~ "high"
+            TMB >= 1 & TMB < 10 ~ "mid",
+            TMB >= 10 ~ "high"
         ),
         TMBcat = factor(TMBcat, levels = c("high", "mid", "low")),
         # specify if a kataegis foci was detected by the method
@@ -129,7 +126,7 @@ performancePerSampleTMB <- resultsPerSample |>
     dplyr::ungroup()
 ```
 
-Calculate the performance of the kataegis detection tools regarding variant classfication
+Calculate the performance of the kataegis detection tools regarding variant classification
 ```{r}
 resultsPerVariant <- resultsAlex |>
     dplyr::group_by(.data$package, .data$sampleNames) |> 
@@ -139,7 +136,9 @@ resultsPerVariant <- resultsAlex |>
 performancePerVariant <- resultsPerVariant |> 
     dplyr::group_by(.data$package) |> 
     dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) |> 
-    dplyr::ungroup()
+    dplyr::ungroup() |> 
+    arrange(desc(nMCC)) |> 
+    dplyr::select(package, accuracy, nMCC, F1, TPR, TNR)
 
 performancePerVariantTMB <- resultsPerVariant |> 
     dplyr::group_by(.data$package, .data$TMBcat) |> 
@@ -151,15 +150,15 @@ performancePerVariantTMB <- resultsPerVariant |>
 plot performance in variant classification split on TMB
 ```{r}
 # facet labels
-TMB.labs <- c("TMB >= 10", "0.1 >= TMB < 10", "0.1 < TMB")
+TMB.labs <- c("TMB >= 10", "0.1 >= TMB < 10", "TMB < 0.1")
 names(TMB.labs) <- c("high", "mid", "low")
 
-plotPerformancePerVariantTMB <- performancePerVariantTMB %>% 
+plotPerformancePerVariantTMB <- performancePerVariantTMB |> 
     tidyr::pivot_longer(
         cols = c(accuracy, TPR, TNR, F1, nMCC),
         names_to = "performanceMetric",
         values_to = "value"
-    ) %>% 
+    ) |> 
     ggplot2::ggplot(aes(y = factor(package, levels = arrange(performancePerVariant, nMCC)$package), 
                         x = factor(performanceMetric, levels = c("accuracy","nMCC", "F1", "TPR", "TNR")), 
                         label = round(value, 4), 
@@ -179,7 +178,7 @@ plotPerformancePerVariantTMB <- performancePerVariantTMB %>%
     ggplot2::geom_text(size = 2.9, angle = 0) +
     facet_grid(TMBcat~., labeller = labeller(TMBcat = TMB.labs)) 
 
-ggsave(file = "../figures/plotAlexandrovDataPerformancePerVariantTMB.jpeg", plotPerformancePerVariantTMB, height = 5, width = 5.9)
+ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovDataPerformancePerVariantTMB.jpeg", plotPerformancePerVariantTMB, height = 5, width = 5.9)
 ```
 
 ```{r}
@@ -188,53 +187,16 @@ detectedKataegisInSample.labs <- c("Kataegis Samples", "Non Kataegis Samples")
 names(detectedKataegisInSample.labs) <- c(TRUE, FALSE)
 
 # Total runtimes of all PCF methods 
-plotRunTimesTotal <- resultsPerSample %>% 
-  ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60)) + 
-  geom_boxplot(outlier.size = 0.5) +
-  ggplot2::ylab("Run times (minutes)") +
-  ggplot2::xlab("Package name") +
-  ggtitle("Total runtimes of kataegis detection tools") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+plotRunTimesTotal <- resultsPerSample |> 
+    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60)) + 
+    geom_boxplot(outlier.size = 0.5) +
+    ggplot2::ylab("Run times (minutes)") +
+    ggplot2::xlab("Package name") +
+    #ggtitle("Total runtimes of kataegis detection tools") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
 
-ggsave(file = "../figures/plotAlexandrovRuntimesTotal.jpeg", plotRunTimesTotal, width = 12, height = 4)
-
-# runtimes of PCF methods split on kataegis in sample and TMB
-plotRunTimesSplit <- resultsPerSample %>% 
-  ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60)) + 
-  geom_boxplot() +
-  ggplot2::ylab("Run times (minutes)") +
-  ggplot2::xlab("Package name") +
-  ggtitle("Runtimes of kataegis detection tools split on TMB and kataegis samples") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6)) +
-  facet_grid(detectedKataegisInSample~TMB, labeller = labeller(detectedKataegisInSample = detectedKataegisInSample.labs, TMB = TMB.labs))
-
-#ggsave(file = "../../thesis/figures/png_and_jpeg_images/plotSyntheticRuntimesSplit.jpeg", plotRunTimesSplit, width = 12, height = 5)
-
-# scaled runtimes of PCF methods split on kataegis in sample and TMB
-plotRunTimesSplitScaled <- resultsPerSample %>% 
-  group_by(TMB, kataegisInSample) %>% 
-  mutate(runTimeScale = (runTime- min(runTime)) /(max(runTime)-min(runTime))
-  ) %>%
-  ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTimeScale)) + 
-  geom_boxplot() +
-  ggplot2::ylab("Scaled run times") +
-  ggplot2::xlab("Package name") +
-  ggtitle("Scaled PCF runtimes split on TMB and  and kataegis samples") +
-  #theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6)) +
-   theme_bw() +
-   #theme_replace(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
-  facet_grid(detectedKataegisInSample~TMB, labeller = labeller(detectedKataegisInSample = detectedKataegisInSample.labs, TMB = TMB.labs))
-
-#ggsave(file = "../../thesis/figures/png_and_jpeg_images/plotSyntheticKatDetectSplitScaled.jpeg", plotRunTimesSplitScaled, width = 12, height = 5)
-#ggsave(file = "../../thesis/figures/svg_images/plotSyntheticKatDetectSplitScaled.svg", plotRunTimesSplitScaled, width = 12, height = 5)
+ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovRuntimesTotal.jpeg", plotRunTimesTotal, width = 12, height = 4)
 ```
 
 
-```{r}
-kdPD7409a <- katdetectr::detectKataegis(genomicVariants = alexandrovData$genomicVariants$PD7409a)
-plotPD7409a <- katdetectr::rainfallPlot(kdPD7409a)
-ggsave(file = "../figures/rainfall_PD74009a.png", plotPD7409a, height = 4, width = 6.5)
 
-plotPD7409aZoom <- katdetectr::rainfallPlot(kd, showSequence = c("chr8", "chr13", "chrX"), showSegmentation = T)
-ggsave(file = "../figures/rainfall_PD74009a_zoom.png", plotPD7409aZoom, height = 4, width = 6.5)
-```
