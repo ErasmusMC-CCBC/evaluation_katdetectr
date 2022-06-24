@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 library(dplyr)
+library(VariantAnnotation)
 ```
 
 
@@ -125,7 +126,7 @@ performancePerVariant <- resultsPerVariant |>
     dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) |> 
     ungroup()|>  
     arrange(desc(nMCC)) |> 
-    select(package, accuracy, nMCC, F1, TPR, TNR)
+    dplyr::select(package, accuracy, nMCC, F1, TPR, TNR)
 
 performancePerVariantTMB <- resultsPerVariant |> 
     group_by(package, TMB) |> 
@@ -165,8 +166,7 @@ plotPerformancePerVariantTMB <- performancePerVariantTMB |>
     ggplot2::geom_text(size = 1.5, angle = 0) +
     facet_grid(TMB ~ ., labeller = labeller(TMB = rev(TMB.labs)))
 
-ggsave(file = "../figures/plotSyntheticDataPerformancePerVariantTMB.jpeg", plotPerformancePerVariantTMB, width = 3.5)
-#ggsave(file = "../figures/plotSyntheticDataPerformancePerVariantTMB.svg", plotPerformancePerVariantTMB, width = 3.5)
+ggsave(file = "../../katdetectr_manusscript/figures/plotSyntheticDataPerformancePerVariantTMB.jpeg", plotPerformancePerVariantTMB, width = 3.5)
 ```
 
 ```{r}
@@ -180,40 +180,10 @@ plotRunTimesTotal <- resultsPerSample |>
     geom_boxplot(outlier.size = 0.5) +
     ggplot2::ylab("Run times (minutes)") +
     ggplot2::xlab("Package name") +
-    ggtitle("Total runtimes of kataegis detection tools") +
+    #ggtitle("Total runtimes of kataegis detection tools") +
     theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
 
-ggsave(file = "../figures/plotSyntheticRuntimesTotal.jpeg", plotRunTimesTotal, width = 12, height = 4)
-
-# runtimes of PCF methods split on kataegis in sample and TMB
-plotRunTimesSplit <- resultsPerSample |> 
-    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60)) + 
-    geom_boxplot() +
-    ggplot2::ylab("Run times (minutes)") +
-    ggplot2::xlab("Package name") +
-    ggtitle("Runtimes of kataegis detection tools split on TMB and kataegis samples") +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6)) +
-    facet_grid(detectedKataegisInSample~TMB, labeller = labeller(detectedKataegisInSample = detectedKataegisInSample.labs, TMB = TMB.labs))
-
-#ggsave(file = "../../thesis/figures/png_and_jpeg_images/plotSyntheticRuntimesSplit.jpeg", plotRunTimesSplit, width = 12, height = 5)
-
-# scaled runtimes of PCF methods split on kataegis in sample and TMB
-plotRunTimesSplitScaled <- resultsPerSample |> 
-    group_by(TMB, kataegisInSample) |> 
-    mutate(runTimeScale = (runTime- min(runTime)) /(max(runTime)-min(runTime))
-    ) |>
-    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTimeScale)) + 
-    geom_boxplot() +
-    ggplot2::ylab("Scaled run times") +
-    ggplot2::xlab("Package name") +
-    ggtitle("Scaled PCF runtimes split on TMB and  and kataegis samples") +
-    #theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6)) +
-    theme_bw() +
-    #theme_replace(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
-    facet_grid(detectedKataegisInSample~TMB, labeller = labeller(detectedKataegisInSample = detectedKataegisInSample.labs, TMB = TMB.labs))
-
-#ggsave(file = "../../thesis/figures/png_and_jpeg_images/plotSyntheticKatDetectSplitScaled.jpeg", plotRunTimesSplitScaled, width = 12, height = 5)
-#ggsave(file = "../../thesis/figures/svg_images/plotSyntheticKatDetectSplitScaled.svg", plotRunTimesSplitScaled, width = 12, height = 5)
+ggsave(file = "../../katdetectr_manusscript/figures/plotSyntheticRuntimesTotal.jpeg", plotRunTimesTotal, width = 12, height = 4)
 ```
 
 
