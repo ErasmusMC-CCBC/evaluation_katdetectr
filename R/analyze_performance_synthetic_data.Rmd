@@ -135,6 +135,38 @@ performancePerVariantTMB <- resultsPerVariant |>
 ```
 
 
+Plot nMCC as a function of the TMB for each packge
+```{r}
+# use package ordering from total nMCC score on the Alexandrov dataset
+levelOrderPackages <- c("katdetectr", "SeqKat", "MafTools", "SigProfilerClusters", "ClusteredMutations", "kataegis")
+
+plotLinenMCCperTMB <- performancePerVariantTMB |> 
+    ggplot2::ggplot(aes(
+        x = factor(TMB), 
+        y = nMCC, 
+        group = package, 
+        colour = factor(package, levels = levelOrderPackages))) +
+    geom_line(size = 0.8, alpha = 0.3) +
+    geom_point(aes(x = factor(TMB), y = nMCC)) +
+    theme_light() +   
+    scale_colour_discrete("Package") +
+    ylim(0.5, 1) +
+    xlab("TMB class") +
+    scale_x_discrete(labels=c("0.1" = "0.1\n n = 128",
+                              "0.5" = "0.5\n n = 128", 
+                              "1" = "1\n n = 128",
+                              "5" = "5\n n = 128",
+                              "10" = "10\n n = 128",
+                              "50" = "50\n n = 128",
+                              "100" = "100\n n = 128",
+                              "500" = "500\n n = 128")) +
+    ggtitle("Performance on synthetic data") +
+    theme(legend.position="none")
+
+ggsave(file = "../../katdetectr_manusscript/figures/plotSyntheticLinenMCCperTMB.jpeg", plotLinenMCCperTMB, width = 7, height = 3)
+```
+
+
 ```{r}
 # facet labels
 TMB.labs <- c("TMB: 500", "TMB: 100", "TMB: 50", "TMB: 10", "TMB: 5", "TMB: 1", "TMB: 0.5", "TMB: 0.1")
@@ -180,10 +212,24 @@ plotRunTimesTotal <- resultsPerSample |>
     geom_boxplot(outlier.size = 0.5) +
     ggplot2::ylab("Run times (minutes)") +
     ggplot2::xlab("Package name") +
-    #ggtitle("Total runtimes of kataegis detection tools") +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+    ggtitle("Total runtimes of kataegis detection tools Synthetic dataset")  +
+    theme_light() +
+    theme(axis.text.x = element_text( size = 10))
 
 ggsave(file = "../../katdetectr_manusscript/figures/plotSyntheticRuntimesTotal.jpeg", plotRunTimesTotal, width = 12, height = 4)
+
+
+plotRunTimesTotallog10 <- resultsPerSample |> 
+    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60)) + 
+    geom_boxplot(outlier.size = 0.5) +
+    ggplot2::ylab("Run times (minutes)") +
+    ggplot2::xlab("Package name") +
+    ggtitle("Total runtimes of kataegis detection tools Synthetic dataset log10 scale")  +
+    theme_light() +
+    theme(axis.text.x = element_text( size = 10)) + 
+    coord_trans(y = "log10")
+
+ggsave(file = "../../katdetectr_manusscript/figures/plotSyntheticRuntimesTotallog10.jpeg", plotRunTimesTotallog10, width = 12, height = 4)
 ```
 
 

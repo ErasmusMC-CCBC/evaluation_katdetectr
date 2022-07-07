@@ -20,6 +20,7 @@ source(file = "./function_calculateMetrics.R")
 source(file = "./function_calculateConfusionVariants.R")
 ```
 
+
 Descriptive statistic of the WGS samples in the alexandrov dataset
 ```{r}
 fociPerSample <- alexandrovData$reportedKataegis |> 
@@ -146,6 +147,34 @@ performancePerVariantTMB <- resultsPerVariant |>
     dplyr::ungroup()
 ```
 
+Plot nMCC as a function of the TMB for each packge
+```{r}
+levelOrderTMB <- c("Low (TMB < 0.1)", "Mid (0.1 >= TMB < 10)", "High (TMB >= 10)")
+levelOrderTMB <- c("low", "mid", "high")
+levelOrderPackages <- factor(performancePerVariant$package, levels = arrange(performancePerVariant, nMCC)$package)
+
+plotLinenMCCperTMB <- performancePerVariantTMB |> 
+    ggplot2::ggplot(aes(
+        x = factor(TMBcat, levels = levelOrderTMB), 
+        y = nMCC, 
+        group = factor(package, levels = levelOrderPackages), 
+        colour = factor(package, levels = levelOrderPackages))) +
+    geom_line(size = 0.8, alpha = 0.4) +
+    geom_point(aes(x = factor(TMBcat, levels = levelOrderTMB), y = nMCC)) +
+    theme_light() +   
+    scale_colour_discrete("Package") +
+    scale_x_discrete(labels=c("low" = "Low (TMB < 0.1)\n n = 301", 
+                              "mid" = "Mid (0.1 ≥ TMB < 10)\n n = 186",
+                              "high" = "High (TMB ≥ 10)\n n = 20")) +
+    ylim(0.5, 1) +
+    xlab("TMB class") +
+    ggtitle("Performance on Alexandrov data") + 
+    theme(legend.position="none")
+
+ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovLinenMCCperTMB.jpeg", plotLinenMCCperTMB, width = 7, height = 3)
+```
+
+
 
 plot performance in variant classification split on TMB
 ```{r}
@@ -192,11 +221,24 @@ plotRunTimesTotal <- resultsPerSample |>
     geom_boxplot(outlier.size = 0.5) +
     ggplot2::ylab("Run times (minutes)") +
     ggplot2::xlab("Package name") +
-    #ggtitle("Total runtimes of kataegis detection tools") +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+    ggtitle("Total runtimes of kataegis detection tools Alexandrov dataset")  +
+    theme_light() +
+    theme(axis.text.x = element_text( size = 10))
+    
 
 ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovRuntimesTotal.jpeg", plotRunTimesTotal, width = 12, height = 4)
-```
 
+plotRunTimesTotallog10 <- resultsPerSample |> 
+    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60)) + 
+    geom_boxplot(outlier.size = 0.5) +
+    ggplot2::ylab("Run times (minutes)") +
+    ggplot2::xlab("Package name") +
+    ggtitle("Total runtimes of kataegis detection tools Alexandrov dataset log10 scale")  +
+    theme_light() +
+    theme(axis.text.x = element_text( size = 10)) + 
+    coord_trans(y = "log10")
+
+ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovRuntimesTotallog10.jpeg", plotRunTimesTotallog10, width = 12, height = 4)
+```
 
 
