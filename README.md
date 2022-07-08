@@ -15,6 +15,6 @@ These can directly be downloaded using `zen4R` and be used as input.
 # Increase the timeout (due to some large files).
 options(timeout=5000)
 
-# Download the required files (into the data/ folder).
-zen4R::download_zenodo(doi = "10.5281/zenodo.6809683", path = 'data/')
+# Download the required files into the data/ folder (~1GB).
+zen4R::download_zenodo(doi = "10.5281/zenodo.6810477", path = 'data/')
 ```
