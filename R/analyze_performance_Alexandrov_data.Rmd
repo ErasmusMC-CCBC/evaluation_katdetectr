@@ -1,7 +1,7 @@
 ---
-title: "Analyze performance Alexandrov data"
+title: "Comparison of Performance - Alexandrov et al. data"
 author: "Daan Hazelaar"
-date: '2022-04-22'
+date: '2022-07-08'
 output: html_document
 ---
 
@@ -13,11 +13,11 @@ library(dplyr)
 
 
 ```{r}
-load(file = "../results/resultsAlexandrovAllTools.RData")
+load(file = "../data/resultsAlexandrovAllTools.RData")
 load(file = "../data/alexandrov_data_processed.RData")
 load(file = "../data/sampleOrigin.RData")
-source(file = "./function_calculateMetrics.R")
-source(file = "./function_calculateConfusionVariants.R")
+source(file = "function_calculateMetrics.R")
+source(file = "function_calculateConfusionVariants.R")
 ```
 
 
@@ -59,7 +59,7 @@ alexandrovData$genomicVariants |>
     )
 ```
 
-put all results in a single dataframe and add columns needed for further analysis
+Combine results into a dataframe and add columns needed for further analysis.
 ```{r}
 kataegisSampleNames <- base::unique(alexandrovData$reportedKataegisFoci$sampleNames)
 nVariantsInSample <- base::lapply(alexandrovData$genomicVariants, base::length)
@@ -163,9 +163,11 @@ plotLinenMCCperTMB <- performancePerVariantTMB |>
     geom_point(aes(x = factor(TMBcat, levels = levelOrderTMB), y = nMCC)) +
     theme_light() +   
     scale_colour_discrete("Package") +
-    scale_x_discrete(labels=c("low" = "Low (TMB < 0.1)\n n = 301", 
-                              "mid" = "Mid (0.1 ≥ TMB < 10)\n n = 186",
-                              "high" = "High (TMB ≥ 10)\n n = 20")) +
+    scale_x_discrete(labels=c(
+        "low" = "Low (TMB < 0.1)\n n = 301", 
+        "mid" = "Mid (0.1 ≥ TMB < 10)\n n = 186",
+        "high" = "High (TMB ≥ 10)\n n = 20")
+    ) +
     ylim(0.5, 1) +
     xlab("TMB class") +
     ggtitle("Performance on Alexandrov data") + 
@@ -224,7 +226,7 @@ plotRunTimesTotal <- resultsPerSample |>
     ggtitle("Total runtimes of kataegis detection tools Alexandrov dataset")  +
     theme_light() +
     theme(axis.text.x = element_text( size = 10))
-    
+
 
 ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovRuntimesTotal.jpeg", plotRunTimesTotal, width = 12, height = 4)
 

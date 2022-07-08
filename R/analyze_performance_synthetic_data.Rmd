@@ -1,7 +1,7 @@
 ---
 title: "Analyze performance on synthetic data"
 author: "Daan Hazelaar"
-date: '2022-05-02'
+date: '2022-07-08'
 output: html_document
 ---
 
@@ -14,7 +14,7 @@ library(VariantAnnotation)
 
 
 ```{r}
-load(file = "../results/resultsSyntheticAllTools.RData")
+load(file = "../data/resultsSyntheticAllTools.RData")
 load(file = "../data/parameters_synthetic_data.RData")
 load(file = "../data/synthetic_data.RData")
 source(file = "./function_calculateMetrics.R")
@@ -46,14 +46,15 @@ descriptive_synthetic_data <- dataSynthetic$reportedKataegisFoci |>
 
 put all results in a single dataframe and add columns needed for further analysis
 ```{r}
-resultsSynthetic <- dplyr::bind_rows("kataegis" = resultsSyntheticAllTools$kataegis, 
-                                     "MafTools" = resultsSyntheticAllTools$maftools, 
-                                     "SeqKat" = resultsSyntheticAllTools$seqkat,
-                                     "ClusteredMutations" = resultsSyntheticAllTools$clusteredMutations,
-                                     "katdetectr" = resultsSyntheticAllTools$katdetectr,
-                                     "SigProfilerClusters" = resultsSyntheticAllTools$sigProfilerClusters,
-                                     .id = "package") |> 
-    # join the parameters setting used for generating the synthethic data
+resultsSynthetic <- dplyr::bind_rows(
+    "kataegis" = resultsSyntheticAllTools$kataegis, 
+    "MafTools" = resultsSyntheticAllTools$maftools, 
+    "SeqKat" = resultsSyntheticAllTools$seqkat,
+    "ClusteredMutations" = resultsSyntheticAllTools$clusteredMutations,
+    "katdetectr" = resultsSyntheticAllTools$katdetectr,
+    "SigProfilerClusters" = resultsSyntheticAllTools$sigProfilerClusters,
+    .id = "package") |> 
+    # join the parameters setting used for generating the synthetic data
     dplyr::left_join(dplyr::select(parameters, parmNames, nBackgroundMuts), by = c("sampleNames" = "parmNames")) |> 
     # join the information of the generated kataegis foci
     dplyr::left_join(dplyr::select(dataSynthetic$reportedKataegisFoci, sampleNames, kataegis), by = "sampleNames") |> 
@@ -152,14 +153,16 @@ plotLinenMCCperTMB <- performancePerVariantTMB |>
     scale_colour_discrete("Package") +
     ylim(0.5, 1) +
     xlab("TMB class") +
-    scale_x_discrete(labels=c("0.1" = "0.1\n n = 128",
-                              "0.5" = "0.5\n n = 128", 
-                              "1" = "1\n n = 128",
-                              "5" = "5\n n = 128",
-                              "10" = "10\n n = 128",
-                              "50" = "50\n n = 128",
-                              "100" = "100\n n = 128",
-                              "500" = "500\n n = 128")) +
+    scale_x_discrete(labels=c(
+        "0.1" = "0.1\n n = 128",
+        "0.5" = "0.5\n n = 128", 
+        "1" = "1\n n = 128",
+        "5" = "5\n n = 128",
+        "10" = "10\n n = 128",
+        "50" = "50\n n = 128",
+        "100" = "100\n n = 128",
+        "500" = "500\n n = 128")
+    ) +
     ggtitle("Performance on synthetic data") +
     theme(legend.position="none")
 

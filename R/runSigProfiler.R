@@ -2,18 +2,18 @@ library("VariantAnnotation")
 library("dplyr")
 
 setwd(dir = "~/sig/")
-load(file = "./data/synthetic_data.RData")
-load(file = "./data/alexandrov_data_processed.RData")
+load(file = "data/synthetic_data.RData")
+load(file = "data/alexandrov_data_processed.RData")
 
-setwd(dir = "./sigProfilerResults")
+setwd(dir = "sigProfilerResults")
 
 runSigProfilerClustered <- function(data){
 
     sampleName <- unique(data@sampleNames)
 
     # create new dir
-    dir.create(path = paste0("./", sampleName), showWarnings = FALSE)
-    setwd(dir = paste0("./", sampleName))
+    dir.create(path = paste0("", sampleName), showWarnings = FALSE)
+    setwd(dir = paste0("", sampleName))
 
     # convert data to a sigprofiler friendly format
     GenomeInfoDb::seqlevelsStyle(data) <- 'NCBI'
@@ -28,11 +28,11 @@ runSigProfilerClustered <- function(data){
         select(CancerType, sampleNames, NGS_method, referenceGenome, mutType, seqnames, start, end, ref, alt, mutss)
 
     # write data to disk as a .txt file
-    write.table(vrFormatted, file = "./data_SigProf.txt", row.names = FALSE, col.names = FALSE, quote = FALSE, sep = "\t")
+    write.table(vrFormatted, file = "data_SigProf.txt", row.names = FALSE, col.names = FALSE, quote = FALSE, sep = "\t")
     # add the header to the data.txt
-    file.copy("../data/header.txt", "./data_SigProf_header.txt", overwrite = TRUE)
-    file.append("./data_SigProf_header.txt", "./data_SigProf.txt")
-    unlink("./data_SigProf.txt")
+    file.copy("data/header.txt", "data_SigProf_header.txt", overwrite = TRUE)
+    file.append("data_SigProf_header.txt", "data_SigProf.txt")
+    unlink("data_SigProf.txt")
 
 
     startTime <- base::proc.time()
@@ -69,9 +69,7 @@ runSigProfilerClustered <- function(data){
 }
 
 allResultsAlexandrov <- bind_rows(lapply(alexandrovData$genomicVariants["LUAD-E01014"], runSigProfilerClustered))
-save(object = allResultsAlexandrov, file = "../allResultsAlexandrovSigProfiler.Rdata")
+save(object = allResultsAlexandrov, file = "data/allResultsAlexandrovSigProfiler.Rdata")
 
 allResultsSynthetic <- bind_rows(lapply(dataSynthetic$genomicVariants, runSigProfilerClustered))
-save(object = allResultsSynthetic, file = "../allResultsSyntheticSigProfiler.Rdata")
-
-
+save(object = allResultsSynthetic, file = "data/allResultsSyntheticSigProfiler.Rdata")
