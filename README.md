@@ -8,7 +8,7 @@ This repository contains all the custom scripts used in the evaluation and compa
 
 # Usage
 
-All required files were deposited on [Zenodo](link).
+All required files were deposited on [Zenodo]([link](https://zenodo.org/record/6623289#.YqBxHi8Rr0o%5D)).
 These can directly be downloaded using `zen4R` and be used as input.
 
 ```R
