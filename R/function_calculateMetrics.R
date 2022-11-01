@@ -16,7 +16,7 @@ calculateMetrics <- function(x){
         F1 =  dplyr::if_else(FP + FN != 0 ,TP / (TP + 0.5 * (FP + FN)), 1),
         # nMCC = 0 when a column or row of the confusion matrix
         nMCC = (mltools::mcc(TP = TP, FP = FP, TN = TN, FN = FN) + 1) / 2,
-        meanRuntime = mean(x$runTime)
+        meanRuntime = mean(x$runTime, na.rm = TRUE)
     )
 
     return(metrics)
