@@ -31,7 +31,7 @@ importAlexandrovData <- function(){
         reportedKataegisFoci = reportedKataegisFoci
     )
 
-    base::save(alexandrovData, file = "./data/alexandrov_data_processed.RData")
+    base::save(alexandrovData, file = "data/alexandrov_data_processed.RData")
 
     return(alexandrovData)
 }
@@ -136,7 +136,7 @@ importReportedKataegisFoci <- function(){
 
 addSequencingTechnique <- function(AlexandrovDataProcessed){
 
-    base::load(file = "./data/sampleOrigin.RData")
+    base::load(file = "data/sampleOrigin.RData")
     AlexandrovDataAnnotated <- dplyr::left_join(AlexandrovDataProcessed, sampleOrigin, by = "sampleNames")
 
     return(AlexandrovDataAnnotated)

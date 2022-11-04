@@ -163,5 +163,5 @@ saveData <- function(syntheticData, syntheticDataMAF, kataegisInformation){
         reportedKataegisFoci = kataegisInformation
     )
 
-    save(dataSynthetic, file = "~/local_data/katdetectr/data/synthetic_data.RData")
+    save(dataSynthetic, file = "data/synthetic_data.RData")
 }

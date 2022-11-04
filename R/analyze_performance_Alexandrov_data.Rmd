@@ -1,7 +1,7 @@
 ---
-title: "Analyze performance Alexandrov data"
+title: "Comparison of Performance - Alexandrov et al. data"
 author: "Daan Hazelaar"
-date: '2022-04-22'
+date: '2022-07-08'
 output: html_document
 ---
 
@@ -11,13 +11,29 @@ library(ggplot2)
 library(dplyr)
 ```
 
-
 ```{r}
 load(file = "../results/resultsAlexandrovAllTools.RData")
 load(file = "../data/alexandrov_data_processed.RData")
 load(file = "../data/sampleOrigin.RData")
-source(file = "./function_calculateMetrics.R")
-source(file = "./function_calculateConfusionVariants.R")
+source(file = 'function_calculateMetrics.R')
+source(file = "function_calculateConfusionVariants.R")
+
+theme_Job <- ggplot2::theme(
+    legend.position = 'bottom',
+    legend.direction = 'horizontal',
+    text = ggplot2::element_text(size=9, family='Helvetica', face = 'bold'),
+    axis.text.x = ggtext::element_markdown(),
+    axis.title.x = ggtext::element_textbox_simple(width = NULL, halign = .5),
+    axis.title.y = ggtext::element_textbox_simple(size = 8, orientation = 'left-rotated', width = NULL, halign = .5),
+    strip.text = ggtext::element_textbox_simple(width = NULL, halign = .5),
+    panel.grid.major.x = ggplot2::element_line(colour = 'grey90', linetype = 'dotted'),
+    panel.grid.major.y = ggplot2::element_line(colour = '#E5E5E5', linetype = 'dotted'),
+    panel.grid.minor.y = ggplot2::element_blank(),
+    panel.background = ggplot2::element_rect(fill = NA, colour = 'black'),
+    panel.border = ggplot2::element_rect(fill = NA, colour = NA),
+    strip.background = ggplot2::element_rect(colour = 'black', fill = 'white'),
+    legend.text = ggtext::element_markdown()
+)
 ```
 
 
@@ -59,7 +75,7 @@ alexandrovData$genomicVariants |>
     )
 ```
 
-put all results in a single dataframe and add columns needed for further analysis
+Combine results into a dataframe and add columns needed for further analysis.
 ```{r}
 kataegisSampleNames <- base::unique(alexandrovData$reportedKataegisFoci$sampleNames)
 nVariantsInSample <- base::lapply(alexandrovData$genomicVariants, base::length)
@@ -95,7 +111,7 @@ resultsAlex <- dplyr::bind_rows(
 
 Calculate the performance of the kataegis detection tools regarding sample classfication
 ```{r}
-resultsPerSample <- resultsAlex |> 
+resultsPerSampleAlex <- resultsAlex |> 
     # summarise if a method detected kataegis in a sample
     dplyr::group_by(.data$package, .data$sampleNames, .data$TMB, .data$TMBcat, .data$runTime) |> 
     dplyr::summarise(
@@ -116,12 +132,12 @@ resultsPerSample <- resultsAlex |>
     ) |> 
     dplyr::ungroup()
 
-performancePerSample <- resultsPerSample |> 
+performancePerSampleAlex <- resultsPerSampleAlex |> 
     dplyr::group_by(.data$package) |> 
     dplyr::group_modify(~ calculateMetrics(.x), .keep = TRUE) |> 
     dplyr::ungroup()
 
-performancePerSampleTMB <- resultsPerSample |> 
+performancePerSampleTMB <- resultsPerSampleAlex |> 
     dplyr::group_by(.data$package, .data$TMBcat) |> 
     dplyr::group_modify(~ calculateMetrics(.x), .keep = TRUE) |> 
     dplyr::ungroup()
@@ -131,47 +147,48 @@ Calculate the performance of the kataegis detection tools regarding variant clas
 ```{r}
 resultsPerVariant <- resultsAlex |>
     dplyr::group_by(.data$package, .data$sampleNames) |> 
-    dplyr::group_modify(~ calculateConfusionVariants(.x, variantData = alexandrovData), keep = TRUE) |> 
+    dplyr::group_modify(~ calculateConfusionVariants(.x, variantData = alexandrovData), .keep = TRUE) |> 
     dplyr::ungroup()
 
-performancePerVariant <- resultsPerVariant |> 
+performancePerVariantAlex <- resultsPerVariant |> 
     dplyr::group_by(.data$package) |> 
-    dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) |> 
+    dplyr::group_modify(~ calculateMetrics(.x), .keep = TRUE) |> 
     dplyr::ungroup() |> 
     arrange(desc(nMCC)) |> 
     dplyr::select(package, accuracy, nMCC, F1, TPR, TNR)
 
-performancePerVariantTMB <- resultsPerVariant |> 
+performancePerVariantTMBAlex <- resultsPerVariant |> 
     dplyr::group_by(.data$package, .data$TMBcat) |> 
-    dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) |> 
+    dplyr::group_modify(~ calculateMetrics(.x), .keep = TRUE) |> 
     dplyr::ungroup()
 ```
 
-Plot nMCC as a function of the TMB for each packge
+Plot nMCC as a function of the TMB for each package
 ```{r}
 levelOrderTMB <- c("Low (TMB < 0.1)", "Mid (0.1 >= TMB < 10)", "High (TMB >= 10)")
 levelOrderTMB <- c("low", "mid", "high")
-levelOrderPackages <- factor(performancePerVariant$package, levels = arrange(performancePerVariant, nMCC)$package)
+levelOrderPackages <- factor(performancePerVariantAlex$package, levels = arrange(performancePerVariantAlex, nMCC)$package)
 
-plotLinenMCCperTMB <- performancePerVariantTMB |> 
+colors = c('ClusteredMutations' = '#66C2A5', 'kataegis' = '#FC8D62', 'katdetectr' = '#8DA0CB', 'MafTools' = '#E78AC3', 'SeqKat' = '#A6D854', 'SigProfilerClusters' = '#FFD92F')
+
+plotnMMC.Alex <- performancePerVariantTMBAlex |> 
     ggplot2::ggplot(aes(
         x = factor(TMBcat, levels = levelOrderTMB), 
         y = nMCC, 
         group = factor(package, levels = levelOrderPackages), 
         colour = factor(package, levels = levelOrderPackages))) +
-    geom_line(size = 0.8, alpha = 0.4) +
-    geom_point(aes(x = factor(TMBcat, levels = levelOrderTMB), y = nMCC)) +
-    theme_light() +   
-    scale_colour_discrete("Package") +
-    scale_x_discrete(labels=c("low" = "Low (TMB < 0.1)\n n = 301", 
-                              "mid" = "Mid (0.1 ≥ TMB < 10)\n n = 186",
-                              "high" = "High (TMB ≥ 10)\n n = 20")) +
-    ylim(0.5, 1) +
-    xlab("TMB class") +
-    ggtitle("Performance on Alexandrov data")
-#theme(legend.position="none")
-
-ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovLinenMCCperTMB.jpeg", plotLinenMCCperTMB, width = 7, height = 3)
+    ggplot2::geom_line(size = 0.5, alpha = 0.4, lty = 11) +
+    ggplot2::geom_point(aes(x = factor(TMBcat, levels = levelOrderTMB), y = nMCC, fill = package), col = 'black', shape = 21, lwd = 2, position = ggbeeswarm::position_quasirandom(width = .05)) +
+    ggplot2::scale_fill_manual(values = colors) +
+    ggplot2::scale_color_manual(values = colors, guide = 'none') +
+    ggplot2::scale_x_discrete(labels=c(
+        "low" = "Low (TMB < 0.1)<br>n = 301", 
+        "mid" = "Mid (0.1 ≥ TMB < 10)<br>n = 186",
+        "high" = "High (TMB ≥ 10)<br>n = 20")
+    ) +
+    ggplot2::ylim(0.5, 1) +
+    ggplot2::labs(x = "TMB class", y = 'nMCC<br>Alexandrov et al.') +
+    theme_Job
 ```
 
 
@@ -182,13 +199,13 @@ plot performance in variant classification split on TMB
 TMB.labs <- c("TMB >= 10", "0.1 >= TMB < 10", "TMB < 0.1")
 names(TMB.labs) <- c("high", "mid", "low")
 
-plotPerformancePerVariantTMB <- performancePerVariantTMB |> 
+plotPerformancePerVariantTMB <- performancePerVariantTMBAlex |> 
     tidyr::pivot_longer(
         cols = c(accuracy, TPR, TNR, F1, nMCC),
         names_to = "performanceMetric",
         values_to = "value"
     ) |> 
-    ggplot2::ggplot(aes(y = factor(package, levels = arrange(performancePerVariant, nMCC)$package), 
+    ggplot2::ggplot(aes(y = factor(package, levels = arrange(performancePerVariantAlex, nMCC)$package), 
                         x = factor(performanceMetric, levels = c("accuracy","nMCC", "F1", "TPR", "TNR")), 
                         label = round(value, 4), 
                         fill = value)) +
@@ -206,9 +223,21 @@ plotPerformancePerVariantTMB <- performancePerVariantTMB |>
     ) +
     ggplot2::geom_text(size = 2.9, angle = 0) +
     facet_grid(TMBcat~., labeller = labeller(TMBcat = TMB.labs)) 
-
-ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovDataPerformancePerVariantTMB.jpeg", plotPerformancePerVariantTMB, height = 5, width = 5.9)
 ```
+
+```{r}
+plotRunTimes.Alex <- resultsPerSampleAlex |> 
+     ggplot2::ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSampleAlex, meanRuntime)$package), y = runTime/60, fill = package)) + 
+     gghalves::geom_half_point_panel(size = 1, col = 'black', shape = 21) +
+     gghalves::geom_half_boxplot(outlier.shape = NA) +
+     ggplot2::scale_fill_manual(values = colors, guide = 'none') +
+     ggplot2::scale_color_manual(values = colors, guide = 'none') +
+     ggplot2::scale_y_continuous(trans = scales::pseudo_log_trans(), breaks = c(seq(0,1,by =.2), 0:20)) +
+     ggplot2::labs(y = "Runtime in minutes<br>(Alexandrov et al.; log <sub>10</sub>)", x = 'Packages') +
+     ggplot2::geom_text(data = resultsPerSampleAlex %>% dplyr::group_by(package) %>% dplyr::summarise(mean = mean(runTime, na.rm = T)), aes(x = package, y = -.1, label = round(mean, 1)), size = 3, fontface='bold') +
+     theme_Job
+```
+
 
 ```{r}
 # facet labels
@@ -216,8 +245,8 @@ detectedKataegisInSample.labs <- c("Kataegis Samples", "Non Kataegis Samples")
 names(detectedKataegisInSample.labs) <- c(TRUE, FALSE)
 
 # Total runtimes of all PCF methods 
-plotRunTimesTotal <- resultsPerSample |> 
-    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60)) + 
+plotRunTimesTotal <- resultsPerSampleAlex |> 
+    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSampleAlex, meanRuntime)$package), y = runTime/60)) + 
     geom_boxplot(outlier.size = 0.5) +
     ggplot2::ylab("Run times (minutes)") +
     ggplot2::xlab("Package name") +
@@ -228,8 +257,8 @@ plotRunTimesTotal <- resultsPerSample |>
 
 ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovRuntimesTotal.jpeg", plotRunTimesTotal, width = 12, height = 4)
 
-plotRunTimesTotallog10 <- resultsPerSample |> 
-    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60)) + 
+plotRunTimesTotallog10 <- resultsPerSampleAlex |> 
+    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSampleAlex, meanRuntime)$package), y = runTime/60)) + 
     geom_boxplot(outlier.size = 0.5) +
     ggplot2::ylab("Run times (minutes)") +
     ggplot2::xlab("Package name") +
@@ -245,31 +274,31 @@ ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovRuntimesTotall
 
 Venn diagram that shows in which samples one or more kataegis foci is detected by the packages
 ```{r}
-katDetectadd <- resultsPerSample |> 
+katDetectadd <- resultsPerSampleAlex |> 
     filter(package == "katdetectr" & (TP | FP)) |> 
     pull(sampleNames)
 
-clusteredMutationsadd <- resultsPerSample |> 
+clusteredMutationsadd <- resultsPerSampleAlex |> 
     filter(package == "ClusteredMutations" & (TP | FP)) |> 
     pull(sampleNames)
 
-mafToolsadd <- resultsPerSample |> 
+mafToolsadd <- resultsPerSampleAlex |> 
     filter(package == "MafTools" & (TP | FP)) |> 
     pull(sampleNames)
 
-kataegisadd <- resultsPerSample |> 
+kataegisadd <- resultsPerSampleAlex |> 
     filter(package == "kataegis" & (TP | FP)) |> 
     pull(sampleNames)
 
-seqkatadd <- resultsPerSample |> 
+seqkatadd <- resultsPerSampleAlex |> 
     filter(package == "SeqKat" & (TP | FP)) |> 
     pull(sampleNames)
 
-sigProfilerClustersadd <- resultsPerSample |> 
+sigProfilerClustersadd <- resultsPerSampleAlex |> 
     filter(package == "SigProfilerClusters" & (TP | FP)) |> 
     pull(sampleNames)
 
-alexandrovAdd <- resultsPerSample |> 
+alexandrovAdd <- resultsPerSampleAlex |> 
     filter(kataegisInSample) |> 
     pull(sampleNames)
 
@@ -287,6 +316,56 @@ VennDiagram::venn.diagram(
     col = "black",
     rotation.degree	= -6
 )
+```
+
+```{r}
+modelSampleRate <- function(IMDs){
+    
+    lambda <- log(2) / median(IMDs)
+    
+    return(lambda)
+}
+
+# function for calculating the nth root of x
+nthroot = function(x, n){
+    
+    y <- x^(1 / n)
+    
+    return(y)
+}
+
+# Function that defines the IMD cutoff specific for each segment
+# Within this function you can use all variables available in the slots: genomicVariants and segments
+IMDcutoffFun <- function(genomicVariants, segments){
+    
+    IMDs <- genomicVariants$IMD
+    totalVariants <-  segments$totalVariants
+    width <- segments |> dplyr::as_tibble() |> dplyr::pull(width)
+    
+    sampleRate <- modelSampleRate(IMDs)
+    
+    IMDcutoff <- -log(1 - nthroot(0.01 / width, totalVariants - 1)) / sampleRate
+    
+    IMDcutoff <- replace(IMDcutoff, IMDcutoff > 1000, 1000)
+    
+    return(IMDcutoff)
+}
+```
+
+
+```{r}
+katDetectadd[!katDetectadd %in% sigProfilerClustersadd]
+sigProfilerClustersadd[!sigProfilerClustersadd %in% katDetectadd]
+
+
+kd <- katdetectr::detectKataegis(alexandrovData$genomicVariants$"HX5T")
+kdcustom <- katdetectr::detectKataegis(alexandrovData$genomicVariants$"HX5T", IMDcutoff = IMDcutoffFun, minSizeKataegis = 4)
+katdetectr::rainfallPlot(kd)
+katdetectr::rainfallPlot(kdcustom, showSequence = "chr3", showSegmentation = TRUE)
+```
+```{r}
+resultsAlex |> 
+    filter(package == "SigProfilerClusters" & sampleNames == "HX5T")
 ```
 
 

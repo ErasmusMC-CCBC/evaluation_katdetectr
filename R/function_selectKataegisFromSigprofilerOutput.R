@@ -3,7 +3,7 @@ selectKataegisFromSigprofilerOutput <- function(pathToData){
     load(file = pathToData)
 
     samplesWithKataegis <- allResultsSynthetic |>
-        # filter out all rows that do not fit our defenition of a kataegis foci (totalVariants >= 6 and mean IMD <= 1000)
+        # filter out all rows that do not fit our definition of a kataegis foci (totalVariants >= 6 and mean IMD <= 1000)
         # Keep the rows with totalVariants = NA as these represent no detected kataegis in the sample
         filter(totalVariants >= 6 & meanIMD <= 1000)
 
@@ -11,11 +11,11 @@ selectKataegisFromSigprofilerOutput <- function(pathToData){
         # keep all rows that DO NOT represent a kataegis foci according to our definition
         filter(!sampleNames %in% unique(samplesWithKataegis$sampleNames)) |>
         group_by(sampleNames) |>
-        # give each sample in which no kataegis was detected the correct labelling
+        # give each sample in which no kataegis was detected the correct labeling
         summarise(seqnames = NA, start = NA, end = NA, totalVariants = NA, meanIMD = NA, sampleNames = sampleNames, runTime = runTime) |>
         # remove all duplications
         distinct() |>
-        # combine whit the samples that do contain kataegis to end up with the original tibble
+        # combine with the samples that do contain kataegis to end up with the original tibble
         bind_rows(samplesWithKataegis) |>
         ungroup()
 

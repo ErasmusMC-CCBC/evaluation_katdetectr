@@ -1,7 +1,7 @@
 ---
 title: "Analyze performance on synthetic data"
 author: "Daan Hazelaar"
-date: '2022-05-02'
+date: '2022-07-08'
 output: html_document
 ---
 
@@ -20,10 +20,27 @@ load(file = "../results/resultsSyntheticKatdetectrAMOC.RData")
 load(file = "../results/resultsSyntheticKatdetectrBinSeg.RData")
 source(file = "./function_calculateMetrics.R")
 source(file = "./function_calculateConfusionVariants.R")
+
+
+theme_Job <- ggplot2::theme(
+    legend.position = 'bottom',
+    legend.direction = 'horizontal',
+    text = ggplot2::element_text(size=9, family='Helvetica', face = 'bold'),
+    axis.text.x = ggtext::element_markdown(),
+    axis.title.x = ggtext::element_textbox_simple(width = NULL, halign = .5),
+    axis.title.y = ggtext::element_textbox_simple(size = 8, orientation = 'left-rotated', width = NULL, halign = .5),
+    strip.text = ggtext::element_textbox_simple(width = NULL, halign = .5),
+    panel.grid.major.x = ggplot2::element_line(colour = 'grey90', linetype = 'dotted'),
+    panel.grid.major.y = ggplot2::element_line(colour = '#E5E5E5', linetype = 'dotted'),
+    panel.grid.minor.y = ggplot2::element_blank(),
+    panel.background = ggplot2::element_rect(fill = NA, colour = 'black'),
+    panel.border = ggplot2::element_rect(fill = NA, colour = NA),
+    strip.background = ggplot2::element_rect(colour = 'black', fill = 'white'),
+    legend.text = ggtext::element_markdown()
+)
 ```
 
-
-Descriptive statistics of the synthetic data
+Descriptive statistics of the synthetic data.
 ```{r}
 descriptive_synthetic_data <- dataSynthetic$reportedKataegisFoci |> 
     filter(kataegis) |> 
@@ -43,9 +60,7 @@ descriptive_synthetic_data <- dataSynthetic$reportedKataegisFoci |>
 ```
 
 
-
-
-put all results in a single dataframe and add columns needed for further analysis
+Combine results into a dataframe and add columns needed for further analysis.
 ```{r}
 resultsSynthetic <- dplyr::bind_rows("kataegis" = resultsSyntheticAllTools$kataegis, 
                                      "MafTools" = resultsSyntheticAllTools$maftools, 
@@ -109,32 +124,60 @@ resultsPerSample <- resultsSynthetic |>
 # performance of each package over the whole dataset
 performancePerSample <- resultsPerSample |> 
     group_by(package) |> 
-    dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) |> 
+    dplyr::group_modify(~ calculateMetrics(.x), .keep = TRUE) |> 
     ungroup()
 
 performancePerSampleTMB <- resultsPerSample |> 
     group_by(package, TMB) |> 
-    dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) |> 
+    dplyr::group_modify(~ calculateMetrics(.x), .keep = TRUE) |> 
     ungroup()
 ```
 
 ```{r}
 resultsPerVariant <- resultsSynthetic |>
     dplyr::group_by(package, sampleNames) |>
-    dplyr::group_modify(~ calculateConfusionVariants(.x, variantData = dataSynthetic), keep = TRUE) |>
+    dplyr::group_modify(~ calculateConfusionVariants(.x, variantData = dataSynthetic), .keep = TRUE) |>
     ungroup()
 
 performancePerVariant <- resultsPerVariant |> 
     group_by(package) |> 
-    dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) |> 
+    dplyr::group_modify(~ calculateMetrics(.x), .keep = TRUE) |> 
     ungroup()|>  
     arrange(desc(nMCC)) |> 
     dplyr::select(package, accuracy, nMCC, F1, TPR, TNR)
 
 performancePerVariantTMB <- resultsPerVariant |> 
     group_by(package, TMB) |> 
-    dplyr::group_modify(~ calculateMetrics(.x), keep = TRUE) |> 
+    dplyr::group_modify(~ calculateMetrics(.x), .keep = TRUE) |> 
     ungroup()
+```
+
+Plot nMCC as a function of the TMB for each package
+```{r}
+levelOrderTMB <- c("Low (TMB < 0.1)", "Mid (0.1 >= TMB < 10)", "High (TMB >= 10)")
+levelOrderTMB <- c("low", "mid", "high")
+levelOrderPackages <- factor(performancePerVariant$package, levels = arrange(performancePerVariant, nMCC)$package)
+
+colors = c('ClusteredMutations' = '#66C2A5', 'kataegis' = '#FC8D62', 'katdetectr' = '#8DA0CB', 'MafTools' = '#E78AC3', 'SeqKat' = '#A6D854', 'SigProfilerClusters' = '#FFD92F')
+
+plotnMMC.Alex <- performancePerVariantTMB |> 
+    ggplot2::ggplot(aes(
+        x = factor(TMBcat, levels = levelOrderTMB), 
+        y = nMCC, 
+        group = factor(package, levels = levelOrderPackages), 
+        colour = factor(package, levels = levelOrderPackages))) +
+    ggplot2::geom_line(size = 0.5, alpha = 0.4, lty = 11) +
+    ggplot2::geom_point(aes(x = factor(TMBcat, levels = levelOrderTMB), y = nMCC, fill = package), col = 'black', shape = 21, lwd = 2, position = ggbeeswarm::position_quasirandom(width = .05)) +
+    ggplot2::scale_fill_manual(values = colors, guide = 'none') +
+    ggplot2::scale_color_manual(values = colors, guide = 'none') +
+    ggplot2::scale_x_discrete(labels=c(
+        "low" = "Low (TMB < 0.1)<br>n = 301", 
+        "mid" = "Mid (0.1 ≥ TMB < 10)<br>n = 186",
+        "high" = "High (TMB ≥ 10)<br>n = 20")
+    ) +
+    ggplot2::ylim(0.5, 1) +
+    ggplot2::xlab("TMB class") +
+    theme_Job
 ```
 
 
@@ -167,6 +210,31 @@ plotLinenMCCperTMB <- performancePerVariantTMB |>
     #theme(legend.position="none")
 
 ggsave(file = "../../katdetectr_manusscript/figures/plotSyntheticLinenMCCperTMB.jpeg", plotLinenMCCperTMB, width = 7, height = 3)
+
+plotnMMC.Syn <- performancePerVariantTMB |> 
+    ggplot2::ggplot(aes(x = factor(TMB), y = nMCC, group = package, colour = factor(package, levels = levelOrderPackages))) +
+    ggplot2::geom_line(size = 0.5, alpha = 0.4, lty = 11) +
+    ggplot2::geom_point(aes(y = nMCC, fill = package), col = 'black', shape = 21, lwd = 2, position = ggbeeswarm::position_quasirandom(width = .05)) +
+    ggplot2::scale_fill_manual(values = colors, guide = 'none') +
+    ggplot2::scale_color_manual(values = colors, guide = 'none') +
+    ggplot2::scale_x_discrete(labels=c(
+        "low" = "Low (TMB < 0.1)<br>n = 301", 
+        "mid" = "Mid (0.1 ≥ TMB < 10)<br>n = 186",
+        "high" = "High (TMB ≥ 10)<br>n = 20")
+    ) +
+    ggplot2::ylim(0.5, 1) +
+    ggplot2::labs(x = "TMB class", y  = 'nMCC<br>Synthetic dataset') +
+    theme_Job +
+    scale_x_discrete(labels=c(
+        "0.1" = "0.1<br>n = 128",
+        "0.5" = "0.5<br>n = 128", 
+        "1" = "1<br>n = 128",
+        "5" = "5<br>n = 128",
+        "10" = "10<br>n = 128",
+        "50" = "50<br>n = 128",
+        "100" = "100<br>n = 128",
+        "500" = "500<br>n = 128")
+    )
 ```
 
 
@@ -200,9 +268,21 @@ plotPerformancePerVariantTMB <- performancePerVariantTMB |>
     ) +
     ggplot2::geom_text(size = 1.5, angle = 0) +
     facet_grid(TMB ~ ., labeller = labeller(TMB = rev(TMB.labs)))
-
-ggsave(file = "../../katdetectr_manusscript/figures/plotSyntheticDataPerformancePerVariantTMB.jpeg", plotPerformancePerVariantTMB, width = 3.5)
 ```
+
+```{r}
+plotRunTimes.Syn <- resultsPerSample |> 
+     ggplot2::ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime/60, fill = package)) + 
+     gghalves::geom_half_point_panel(size = 1, col = 'black', shape = 21) +
+     gghalves::geom_half_boxplot(outlier.shape = NA) +
+     ggplot2::scale_fill_manual(values = colors, guide = 'none') +
+     ggplot2::scale_color_manual(values = colors, guide = 'none') +
+     ggplot2::scale_y_continuous(trans = scales::pseudo_log_trans(), breaks = c(seq(0,1,by =.2), 0:20)) +
+     ggplot2::labs(y = "Runtime in minutes<br>(Synthetic dataset; log <sub>10</sub>)", x = 'Packages') +
+     ggplot2::geom_text(data = resultsPerSample %>% dplyr::group_by(package) %>% dplyr::summarise(mean = mean(runTime, na.rm = T)), aes(x = package, y = -.1, label = round(mean, 1)), size = 3, fontface='bold') +
+     theme_Job
+```
+
 
 ```{r}
 # facet labels
@@ -234,38 +314,3 @@ plotRunTimesTotallog10 <- resultsPerSample |>
 
 ggsave(file = "../../katdetectr_manusscript/figures/plotSyntheticRuntimesTotallog10.jpeg", plotRunTimesTotallog10, width = 12, height = 4)
 ```
-
-
-```{r}
-statsRuntimes <- resultsPerSample |> 
-    group_by(package) |> 
-    summarise(
-        mean = mean(runTime, na.rm = TRUE) / 60,
-        sd = sd(runTime, na.rm = TRUE) / 60
-    )
-
-statsRuntimes |> 
-    ggplot(aes(
-        x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), 
-        y = mean, 
-        fill = package)) +
-    geom_bar(stat="identity", position=position_dodge()) +
-    geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=.2,
-                 position=position_dodge(.9)) 
-    
-    
-    
-
-```
-
-```{r}
-resultsPerSample |> 
-    group_by(package) |> 
-    summarise(mean(runTime) / 60)
-```
-
-
-```{r}
-
-```
-
