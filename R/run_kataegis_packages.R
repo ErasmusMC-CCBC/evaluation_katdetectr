@@ -10,7 +10,7 @@ i <- 1
 
 load(file = "./data/alexandrov_data_processed.RData")
 
-resultsAlexKatdetectr <- dplyr::bind_rows(base::lapply(alexandrovData$genomicVariants, runKatdetectr, minSizeKataegis = 6, maxMeanIMD = 1000, method = "PCF", test.stat = "Exponential", penalty = "BIC", pen.value = 0, minseglen = 2))
+resultsAlexKatdetectr <- dplyr::bind_rows(base::lapply(alexandrovData$genomicVariants, runKatdetectr, minSizeKataegis = 6, IMDcutoff = 1000, method = "PCF", test.stat = "Exponential", penalty = "BIC", pen.value = 0, minseglen = 2))
 save(resultsAlexKatdetectr, file = "./results/resultsAlexKatdetectr.RData")
 
 resultsAlexSeqkat <- dplyr::bind_rows(pbapply::pblapply(alexandrovData$genomicVariants, runSeqkat, cl = 15))
@@ -40,6 +40,15 @@ save(resultsAlexandrovAllTools, file = "./results/resultsAlexandrovAllTools.RDat
 # Run all tools on the synthetic dataset dataset
 
 load(file = "./data/synthetic_data.RData")
+
+resultsSyntheticKatdetectrAMOC <- dplyr::bind_rows(pbapply::pblapply(dataSynthetic$genomicVariants, runKatdetectr, method = "AMOC", cl = 6))
+save(resultsSyntheticKatdetectrAMOC, file = "./results/resultsSyntheticKatdetectrAMOC.RData")
+
+resultsSyntheticKatdetectrSegNeigh <- dplyr::bind_rows(pbapply::pblapply(dataSynthetic$genomicVariants, runKatdetectr, method = "SegNeigh", cl = 6))
+save(resultsSyntheticKatdetectrSegNeigh, file = "./results/resultsSyntheticKatdetectrSegNeigh.RData")
+
+resultsSyntheticKatdetectrBinSeg <- dplyr::bind_rows(pbapply::pblapply(dataSynthetic$genomicVariants, runKatdetectr, method = "BinSeg", cl = 6))
+save(resultsSyntheticKatdetectrBinSeg, file = "./results/resultsSyntheticKatdetectrBinSeg.RData")
 
 resultsSyntheticKatdetectr <- dplyr::bind_rows(pbapply::pblapply(dataSynthetic$genomicVariants, runKatdetectr, cl = 15))
 save(resultsSyntheticKatdetectr, file = "./results/resultsSyntheticKatdetectr.RData")

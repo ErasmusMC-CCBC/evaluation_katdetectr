@@ -6,7 +6,6 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 library(dplyr)
 library(VariantAnnotation)
@@ -17,6 +16,8 @@ library(VariantAnnotation)
 load(file = "../results/resultsSyntheticAllTools.RData")
 load(file = "../data/parameters_synthetic_data.RData")
 load(file = "../data/synthetic_data.RData")
+load(file = "../results/resultsSyntheticKatdetectrAMOC.RData")
+load(file = "../results/resultsSyntheticKatdetectrBinSeg.RData")
 source(file = "./function_calculateMetrics.R")
 source(file = "./function_calculateConfusionVariants.R")
 ```
@@ -51,6 +52,8 @@ resultsSynthetic <- dplyr::bind_rows("kataegis" = resultsSyntheticAllTools$katae
                                      "SeqKat" = resultsSyntheticAllTools$seqkat,
                                      "ClusteredMutations" = resultsSyntheticAllTools$clusteredMutations,
                                      "katdetectr" = resultsSyntheticAllTools$katdetectr,
+                                     "katdetectrAMOC" = resultsSyntheticKatdetectrAMOC,
+                                     "katdetectrBinSeg" = resultsSyntheticKatdetectrBinSeg,
                                      "SigProfilerClusters" = resultsSyntheticAllTools$sigProfilerClusters,
                                      .id = "package") |> 
     # join the parameters setting used for generating the synthethic data
@@ -160,8 +163,8 @@ plotLinenMCCperTMB <- performancePerVariantTMB |>
                               "50" = "50\n n = 128",
                               "100" = "100\n n = 128",
                               "500" = "500\n n = 128")) +
-    ggtitle("Performance on synthetic data") +
-    theme(legend.position="none")
+    ggtitle("Performance on synthetic data") 
+    #theme(legend.position="none")
 
 ggsave(file = "../../katdetectr_manusscript/figures/plotSyntheticLinenMCCperTMB.jpeg", plotLinenMCCperTMB, width = 7, height = 3)
 ```
@@ -233,6 +236,36 @@ ggsave(file = "../../katdetectr_manusscript/figures/plotSyntheticRuntimesTotallo
 ```
 
 
+```{r}
+statsRuntimes <- resultsPerSample |> 
+    group_by(package) |> 
+    summarise(
+        mean = mean(runTime, na.rm = TRUE) / 60,
+        sd = sd(runTime, na.rm = TRUE) / 60
+    )
+
+statsRuntimes |> 
+    ggplot(aes(
+        x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), 
+        y = mean, 
+        fill = package)) +
+    geom_bar(stat="identity", position=position_dodge()) +
+    geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=.2,
+                 position=position_dodge(.9)) 
+    
+    
+    
+
+```
+
+```{r}
+resultsPerSample |> 
+    group_by(package) |> 
+    summarise(mean(runTime) / 60)
+```
 
 
+```{r}
+
+```
 

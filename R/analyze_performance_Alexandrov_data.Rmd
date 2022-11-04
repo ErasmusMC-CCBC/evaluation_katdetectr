@@ -168,8 +168,8 @@ plotLinenMCCperTMB <- performancePerVariantTMB |>
                               "high" = "High (TMB ≥ 10)\n n = 20")) +
     ylim(0.5, 1) +
     xlab("TMB class") +
-    ggtitle("Performance on Alexandrov data") + 
-    theme(legend.position="none")
+    ggtitle("Performance on Alexandrov data")
+#theme(legend.position="none")
 
 ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovLinenMCCperTMB.jpeg", plotLinenMCCperTMB, width = 7, height = 3)
 ```
@@ -224,7 +224,7 @@ plotRunTimesTotal <- resultsPerSample |>
     ggtitle("Total runtimes of kataegis detection tools Alexandrov dataset")  +
     theme_light() +
     theme(axis.text.x = element_text( size = 10))
-    
+
 
 ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovRuntimesTotal.jpeg", plotRunTimesTotal, width = 12, height = 4)
 
@@ -235,10 +235,317 @@ plotRunTimesTotallog10 <- resultsPerSample |>
     ggplot2::xlab("Package name") +
     ggtitle("Total runtimes of kataegis detection tools Alexandrov dataset log10 scale")  +
     theme_light() +
-    theme(axis.text.x = element_text( size = 10)) + 
-    coord_trans(y = "log10")
+    theme(axis.text.x = element_text(size = 10)) +
+    ylim(0, 15) + 
+    scale_y_log10(breaks = c(0, 0.01, 0.1, 1, 5, 10, 15), labels = c(0, 0.01, 0.1, 1, 5, 10, 15)) +
+    stat_summary(fun.y=mean, geom="point", shape=20, size=3, color="red", fill="red")
 
 ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovRuntimesTotallog10.jpeg", plotRunTimesTotallog10, width = 12, height = 4)
 ```
 
+Venn diagram that shows in which samples one or more kataegis foci is detected by the packages
+```{r}
+katDetectadd <- resultsPerSample |> 
+    filter(package == "katdetectr" & (TP | FP)) |> 
+    pull(sampleNames)
+
+clusteredMutationsadd <- resultsPerSample |> 
+    filter(package == "ClusteredMutations" & (TP | FP)) |> 
+    pull(sampleNames)
+
+mafToolsadd <- resultsPerSample |> 
+    filter(package == "MafTools" & (TP | FP)) |> 
+    pull(sampleNames)
+
+kataegisadd <- resultsPerSample |> 
+    filter(package == "kataegis" & (TP | FP)) |> 
+    pull(sampleNames)
+
+seqkatadd <- resultsPerSample |> 
+    filter(package == "SeqKat" & (TP | FP)) |> 
+    pull(sampleNames)
+
+sigProfilerClustersadd <- resultsPerSample |> 
+    filter(package == "SigProfilerClusters" & (TP | FP)) |> 
+    pull(sampleNames)
+
+alexandrovAdd <- resultsPerSample |> 
+    filter(kataegisInSample) |> 
+    pull(sampleNames)
+
+VennDiagram::venn.diagram(
+    x = list(katDetectadd, clusteredMutationsadd, mafToolsadd, alexandrovAdd, sigProfilerClustersadd),
+    category.names = c("Katdetectr", "ClusteredMutations", "MafTools", "Alexandrov", "SigProfilerClusters"),
+    filename = "../figures/venn_diagram_kataegis_samples.png",
+    output=T,
+    imagetype="png",
+    disable.logging = TRUE,
+    
+    cat.pos = c(0, 0, -120, 120, 0),
+    fill = c("dodgerblue", "goldenrod1", "darkorange1", "seagreen3", "orchid3"),
+    alpha = 0.50,
+    col = "black",
+    rotation.degree	= -6
+)
+```
+
+
+```{r}
+findOverlappingFoci <- function(x){
+    
+    allFociInSample <- x
+    
+    Focireduced <- allFociInSample %>% 
+        GenomicRanges::makeGRangesFromDataFrame(keep.extra.columns = TRUE) %>% 
+        GenomicRanges::reduce(min.gapwidth = 0, ignore.strand = TRUE, with.revmap = TRUE)
+    
+    names(Focireduced$revmap) <- paste0(unique(allFociInSample$sampleNames), "_foci_", seq(length(Focireduced$revmap)))
+    
+    fociList <- lapply(Focireduced$revmap, function(i){
+        allFociInSample$package[i]
+    })
+    
+    focidf <- lapply(seq_len(length(fociList)), function(i){
+        tibble(package = fociList[[i]], foci = names(fociList)[i])
+    }) %>% bind_rows()
+    
+    return(focidf)
+}
+
+alexKataegis <- alexandrovData$reportedKataegisFoci |> 
+    as_tibble() |> 
+    mutate(package = "Alexandrov")
+
+resultsAlexPerFoci <- resultsAlex |> 
+    filter(detectedKataegisInSample) |>  
+    bind_rows(alexKataegis) |> 
+    group_by(sampleNames) %>% 
+    group_modify(~ findOverlappingFoci(.x), keep = TRUE) %>% 
+    ungroup()
+
+katdetectrFoci <- resultsAlexPerFoci |> 
+    filter(package == "katdetectr") |> 
+    pull(foci)
+
+clusteredMutationsFoci <- resultsAlexPerFoci |> 
+    filter(package == "ClusteredMutations") |> 
+    pull(foci)
+
+maftoolsFoci <- resultsAlexPerFoci |> 
+    filter(package == "MafTools") |> 
+    pull(foci)
+
+kataegisPFoci <- resultsAlexPerFoci |> 
+    filter(package == "kataegis") |> 
+    pull(foci)
+
+seqKatFoci <- resultsAlexPerFoci |> 
+    filter(package == "SeqKat") |> 
+    pull(foci)
+
+sigProfilerClustersFoci <- resultsAlexPerFoci |> 
+    filter(package == "SigProfilerClusters") |> 
+    pull(foci)
+
+alexandrovFoci <- resultsAlexPerFoci |> 
+    filter(package == "Alexandrov") |> 
+    pull(foci)
+
+
+VennDiagram::venn.diagram(
+    x = list(katdetectrFoci, clusteredMutationsFoci, maftoolsFoci, sigProfilerClustersFoci, alexandrovFoci),
+    category.names = c("Katdetectr", "ClusteredMutations", "MafTools", "SigProfilerClusters", "Alexandrov"),
+    filename = "../figures/testvenn.png",
+    output=T,
+    imagetype="png",
+    disable.logging = TRUE,
+    
+    cat.pos = c(0, 0, -120, 120, 0),
+    fill = c("dodgerblue", "goldenrod1", "darkorange1", "seagreen3", "orchid3"),
+    alpha = 0.50,
+    col = "black",
+    rotation.degree	= -6
+)
+```
+
+
+
+```{r}
+resultsPerVariant |> 
+    #filter(TMBcat == "high") |> 
+    filter(package == "SigProfilerClusters") |> 
+    arrange(-FP)
+
+resultsPerVariant |> 
+    filter(sampleNames == "PD4103a") 
+```
+
+```{r}
+kd <- katdetectr::detectKataegis(alexandrovData$genomicVariants$PD7409a)
+
+kd
+kd@kataegisFoci 
+katdetectr::rainfallPlot(kd)
+```
+
+
+```{r}
+modelSampleRate <- function(IMDs){
+    
+    lambda <- log(2) / median(IMDs)
+    
+    return(lambda)
+}
+
+nthroot = function(x, n){
+    
+    y <- x^(1 / n)
+    
+    return(y)
+}
+
+determineIMDcutoff <- function(IMDs, totalVariants, width){
+    
+    sampleRate <- modelSampleRate(IMDs)
+    
+    IMDthreshold <- -log(1 - nthroot(0.01 / width, totalVariants - 1)) / sampleRate
+    
+    IMDthreshold <- replace(IMDthreshold, IMDthreshold > 1000, 1000)
+    
+    return(IMDthreshold)
+}
+
+
+kataegisFoci2 <-  kd@segments |> 
+    as_tibble() |> 
+    mutate(
+        IMDcutoff = determineIMDcutoff(kd@genomicVariants$IMD, totalVariants, width)
+    ) |> 
+    filter(meanIMD < IMDcutoff & totalVariants >= 6) |> 
+    determineKataegisFoci(genomicVariantsAnnotated = kd@genomicVariants)
+
+kd2 <- katdetectr::constructKatdetect(
+    genomicVariants = kd@genomicVariants, 
+    segments = kd@segments, 
+    kd@kataegisFoci
+    
+)
+
+katdetectr::rainfallPlot(kd)
+katdetectr::rainfallPlot(kd2)
+```
+
+```{r}
+kd@kataegisFoci
+```
+
+
+```{r}
+kd@segments |> 
+    as_tibble() |> 
+    mutate(
+        IMDcutoff = determineIMDcutoff(kd@genomicVariants$IMD, totalVariants, width)
+    ) |> 
+    filter(meanIMD < IMDcutoff & totalVariants >= 6) |> 
+    determineKataegisFoci(genomicVariantsAnnotated = kd@genomicVariants)
+```
+
+```{r}
+determineKataegisFoci <- function(kataegisSegments, genomicVariantsAnnotated){
+    
+    kataegisSegments |> 
+        .mergeKataegisSegments() |> 
+        .annotateKataegisSegments(genomicVariantsAnnotated)
+    
+}
+
+.determinefociID <- function(segmentIDs){
+    
+    nFoci <- base::sum(c(1, base::diff(segmentIDs)) != 1) + 1
+    nSegmentsInFoci <- base::diff(c(1, base::which(c(1, base::diff(segmentIDs)) != 1), base::length(segmentIDs) + 1))
+    fociID <- base::rep(base::seq_len(nFoci), nSegmentsInFoci)
+    
+    return(fociID)
+}
+
+.mergeKataegisSegments <- function(kataegisSegments){
+    
+    # when no kataegis foci are present in the segments
+    if(base::nrow(kataegisSegments) == 0){
+        kataegisFoci <- tibble::tibble()
+    } else {
+        kataegisFoci <- kataegisSegments |>
+            dplyr::mutate(
+                fociID = .determinefociID(.data$segmentID)
+            ) |>
+            dplyr::group_by(.data$seqnames, .data$fociID) |>
+            dplyr::summarise(
+                .groups = "keep",
+                seqnames = base::unique(.data$seqnames),
+                start = base::min(.data$start),
+                end = base::max(.data$end),
+                sampleNames = base::unique(.data$sampleNames),
+                totalVariants = base::sum(.data$totalVariants),
+                firstVariantID = base::min(.data$firstVariantID),
+                lastVariantID = base::max(.data$lastVariantID),
+                meanIMD = base::mean(.data$meanIMD)
+            ) |>
+            dplyr::ungroup()
+    }
+    
+    return(kataegisFoci)
+}
+
+.annotateKataegisSegments <- function(kataegisFoci, genomicVariantsAnnotated){
+    
+    # when still no kataegis foci are detected after merging of segments
+    if(base::nrow(kataegisFoci) == 0){
+        kataegisFociAnnotated <- GenomicRanges::GRanges()
+    }else{
+        kataegisFociAnnotated <- kataegisFoci |>
+            # remove old fociID
+            dplyr::select(!.data$fociID) |>
+            # add new correct fociID number based on rowindex
+            tibble::rowid_to_column("fociID") |>
+            dplyr::rowwise() |>
+            # manually add the last variants to the detected kataegis foci
+            dplyr::mutate(
+                firstVariantOfSeqname = base::min(genomicVariantsAnnotated$variantID[as.logical(GenomicRanges::seqnames(genomicVariantsAnnotated) == .data$seqnames)]),
+                firstVariantID = base::ifelse(.data$firstVariantID != .data$firstVariantOfSeqname, .data$firstVariantID - 1, .data$firstVariantID),
+                totalVariants = .data$lastVariantID - .data$firstVariantID + 1
+            ) |>
+            dplyr::ungroup() |>
+            dplyr::select(!.data$firstVariantOfSeqname) |>
+            # update start of kataegis foci and add column with sample name
+            dplyr::mutate(
+                start = GenomicRanges::start(genomicVariantsAnnotated[.data$firstVariantID])
+            ) |>
+            # convert to granges
+            GenomicRanges::makeGRangesFromDataFrame(keep.extra.columns = TRUE)
+    }
+    
+    return(kataegisFociAnnotated)
+}
+```
+
+
+```{r}
+kd@segments |> 
+    as_tibble() |> 
+    #rowwise() |> 
+    mutate(
+        sampleRate = modelSampleRate(kd@genomicVariants$IMD),
+        IMDcutoff = determineIMDcutoff(sampleRate, totalVariants, width)
+    ) |> 
+    filter(meanIMD < IMDcutoff & totalVariants >= 3) 
+```
+
+
+```{r}
+kd@kataegisFoci
+
+resultsAlex |> 
+    filter(sampleNames == "PD4103a") |> 
+    filter(package == "katdetectr")
+```
 

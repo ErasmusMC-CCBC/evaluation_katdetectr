@@ -112,7 +112,7 @@ runSeqkat <- function(genomicVariants){
 
 
 
-runKatdetectr <- function(genomicVariants, minSizeKataegis = 6, maxMeanIMD = 1000, method = "PCF", test.stat = "Exponential", penalty = "BIC", pen.value = 0, minseglen = 2){
+runKatdetectr <- function(genomicVariants, minSizeKataegis = 6, IMDcutoff = 1000, method = "PELT", test.stat = "Exponential", penalty = "BIC", pen.value = 0, minseglen = 2){
 
     print(unique(genomicVariants@sampleNames))
 
@@ -122,10 +122,11 @@ runKatdetectr <- function(genomicVariants, minSizeKataegis = 6, maxMeanIMD = 100
     kd <- katdetectr::detectKataegis(
         genomicVariants = genomicVariants,
         minSizeKataegis = minSizeKataegis,
-        maxMeanIMD = maxMeanIMD,
+        IMDcutoff = IMDcutoff,
         test.stat = test.stat,
         penalty = penalty,
         pen.value = pen.value,
+        method = method,
         minseglen = minseglen
     )
     # determine the runtime
