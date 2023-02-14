@@ -1,8 +1,10 @@
 ---
-title: "Comparison of Performance - Alexandrov et al. data"
+title: "Comparison of Performance WGS data"
 author: "Daan Hazelaar"
-date: '2022-07-08'
-output: html_document
+date: "11-02-2023"
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -11,29 +13,15 @@ library(ggplot2)
 library(dplyr)
 ```
 
+
 ```{r}
 load(file = "../results/resultsAlexandrovAllTools.RData")
+load(file = "../results/resultsAlexKatdetectr.RData")
 load(file = "../data/alexandrov_data_processed.RData")
 load(file = "../data/sampleOrigin.RData")
 source(file = 'function_calculateMetrics.R')
 source(file = "function_calculateConfusionVariants.R")
-
-theme_Job <- ggplot2::theme(
-    legend.position = 'bottom',
-    legend.direction = 'horizontal',
-    text = ggplot2::element_text(size=9, family='Helvetica', face = 'bold'),
-    axis.text.x = ggtext::element_markdown(),
-    axis.title.x = ggtext::element_textbox_simple(width = NULL, halign = .5),
-    axis.title.y = ggtext::element_textbox_simple(size = 8, orientation = 'left-rotated', width = NULL, halign = .5),
-    strip.text = ggtext::element_textbox_simple(width = NULL, halign = .5),
-    panel.grid.major.x = ggplot2::element_line(colour = 'grey90', linetype = 'dotted'),
-    panel.grid.major.y = ggplot2::element_line(colour = '#E5E5E5', linetype = 'dotted'),
-    panel.grid.minor.y = ggplot2::element_blank(),
-    panel.background = ggplot2::element_rect(fill = NA, colour = 'black'),
-    panel.border = ggplot2::element_rect(fill = NA, colour = NA),
-    strip.background = ggplot2::element_rect(colour = 'black', fill = 'white'),
-    legend.text = ggtext::element_markdown()
-)
+source(file = "./ggplot_theme.R")
 ```
 
 
@@ -86,8 +74,8 @@ resultsAlex <- dplyr::bind_rows(
     "MafTools" = resultsAlexandrovAllTools$maftools, 
     "SeqKat" = resultsAlexandrovAllTools$seqkat,
     "ClusteredMutations" = resultsAlexandrovAllTools$clusteredMutations,
-    "katdetectr" = resultsAlexandrovAllTools$katdetectr,
-    "kataegis" = resultsAlexandrovAllTools$kataegis,
+    "Katdetectr" = resultsAlexKatdetectr,
+    "Kataegis" = resultsAlexandrovAllTools$kataegis,
     "SigProfilerClusters" = resultsAlexandrovAllTools$sigProfilerClusters,
     .id = "package") |> 
     dplyr::distinct() |> 
@@ -108,6 +96,7 @@ resultsAlex <- dplyr::bind_rows(
     ) |> 
     dplyr::left_join(sampleOrigin, by = "sampleNames")
 ```
+
 
 Calculate the performance of the kataegis detection tools regarding sample classfication
 ```{r}
@@ -144,7 +133,7 @@ performancePerSampleTMB <- resultsPerSampleAlex |>
 ```
 
 Calculate the performance of the kataegis detection tools regarding variant classification
-```{r}
+```{r, warning = FALSE}
 resultsPerVariant <- resultsAlex |>
     dplyr::group_by(.data$package, .data$sampleNames) |> 
     dplyr::group_modify(~ calculateConfusionVariants(.x, variantData = alexandrovData), .keep = TRUE) |> 
@@ -164,12 +153,12 @@ performancePerVariantTMBAlex <- resultsPerVariant |>
 ```
 
 Plot nMCC as a function of the TMB for each package
-```{r}
+```{r,  warning=FALSE}
 levelOrderTMB <- c("Low (TMB < 0.1)", "Mid (0.1 >= TMB < 10)", "High (TMB >= 10)")
 levelOrderTMB <- c("low", "mid", "high")
 levelOrderPackages <- factor(performancePerVariantAlex$package, levels = arrange(performancePerVariantAlex, nMCC)$package)
 
-colors = c('ClusteredMutations' = '#66C2A5', 'kataegis' = '#FC8D62', 'katdetectr' = '#8DA0CB', 'MafTools' = '#E78AC3', 'SeqKat' = '#A6D854', 'SigProfilerClusters' = '#FFD92F')
+colors = c('ClusteredMutations' = '#66C2A5', 'Kataegis' = '#FC8D62', 'Katdetectr' = '#8DA0CB', 'MafTools' = '#E78AC3', 'SeqKat' = '#A6D854', 'SigProfilerClusters' = '#FFD92F')
 
 plotnMMC.Alex <- performancePerVariantTMBAlex |> 
     ggplot2::ggplot(aes(
@@ -187,8 +176,10 @@ plotnMMC.Alex <- performancePerVariantTMBAlex |>
         "high" = "High (TMB ≥ 10)<br>n = 20")
     ) +
     ggplot2::ylim(0.5, 1) +
-    ggplot2::labs(x = "TMB class", y = 'nMCC<br>Alexandrov et al.') +
+    ggplot2::labs(x = "TMB class", y = 'nMCC') +
     theme_Job
+
+ggsave(plotnMMC.Alex, filename = "../figures/legend.svg")
 ```
 
 
@@ -210,9 +201,9 @@ plotPerformancePerVariantTMB <- performancePerVariantTMBAlex |>
                         label = round(value, 4), 
                         fill = value)) +
     ggplot2::geom_tile(color = 'grey25') +
-    scale_fill_gradientn(colors = hcl.colors(20, "RdYlGn"), values = c(0,0.5,1)) +
+    scale_fill_gradientn(colors = hcl.colors(20, "RdYlGn"), values = c(0,0.5,1), limits = c(0, 1), breaks= seq(0,1, by = 0.25)) +
     ggplot2::ylab("Package") +
-    ggplot2::xlab("Performance on Alexandrov et al. data split on TMB") +
+    ggplot2::xlab("Performance on WGS data split on TMB") +
     scale_x_discrete(position = "top") +
     theme(
         axis.text.x = element_text(angle = 0, ),
@@ -223,59 +214,31 @@ plotPerformancePerVariantTMB <- performancePerVariantTMBAlex |>
     ) +
     ggplot2::geom_text(size = 2.9, angle = 0) +
     facet_grid(TMBcat~., labeller = labeller(TMBcat = TMB.labs)) 
+
+ggsave(plotPerformancePerVariantTMB, filename = "../figures/heatmap_wgs.png")
 ```
 
-```{r}
+```{r, warning = FALSE}
+colors = c('ClusteredMutations' = '#66C2A5', 'Kataegis' = '#FC8D62', 'Katdetectr' = '#8DA0CB', 'MafTools' = '#E78AC3', 'SeqKat' = '#A6D854', 'SigProfilerClusters' = '#FFD92F')
 plotRunTimes.Alex <- resultsPerSampleAlex |> 
-     ggplot2::ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSampleAlex, meanRuntime)$package), y = runTime/60, fill = package)) + 
-     gghalves::geom_half_point_panel(size = 1, col = 'black', shape = 21) +
-     gghalves::geom_half_boxplot(outlier.shape = NA) +
-     ggplot2::scale_fill_manual(values = colors, guide = 'none') +
-     ggplot2::scale_color_manual(values = colors, guide = 'none') +
-     ggplot2::scale_y_continuous(trans = scales::pseudo_log_trans(), breaks = c(seq(0,1,by =.2), 0:20)) +
-     ggplot2::labs(y = "Runtime in minutes<br>(Alexandrov et al.; log <sub>10</sub>)", x = 'Packages') +
-     ggplot2::geom_text(data = resultsPerSampleAlex %>% dplyr::group_by(package) %>% dplyr::summarise(mean = mean(runTime, na.rm = T)), aes(x = package, y = -.1, label = round(mean, 1)), size = 3, fontface='bold') +
-     theme_Job
+    ggplot2::ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSampleAlex, meanRuntime)$package), y = runTime, fill = package)) + 
+    gghalves::geom_half_point_panel(size = 1, col = 'black', shape = 21) +
+    gghalves::geom_half_boxplot(outlier.shape = NA) +
+    ggplot2::scale_fill_manual(values = colors, guide = 'none') +
+    ggplot2::scale_color_manual(values = colors, guide = 'none') +
+    ggplot2::scale_y_continuous(trans = scales::pseudo_log_trans(), breaks = c(0:5, 10, 25, 50, seq(100,500,by = 100), 1000)) +
+    ggplot2::labs(y = "Runtime (seconds)", x = 'Packages') +
+    ggplot2::geom_text(data = resultsPerSampleAlex %>% dplyr::group_by(package) %>% dplyr::summarise(mean = mean(runTime, na.rm = T)), aes(x = package, y = -.5, label = round(mean, 1)), size = 3, fontface='bold') +
+    theme_Job
+
+ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovRuntimes.jpeg", plotRunTimes.Alex, width = 7, height = 4)
 ```
 
-
-```{r}
-# facet labels
-detectedKataegisInSample.labs <- c("Kataegis Samples", "Non Kataegis Samples")
-names(detectedKataegisInSample.labs) <- c(TRUE, FALSE)
-
-# Total runtimes of all PCF methods 
-plotRunTimesTotal <- resultsPerSampleAlex |> 
-    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSampleAlex, meanRuntime)$package), y = runTime/60)) + 
-    geom_boxplot(outlier.size = 0.5) +
-    ggplot2::ylab("Run times (minutes)") +
-    ggplot2::xlab("Package name") +
-    ggtitle("Total runtimes of kataegis detection tools Alexandrov dataset")  +
-    theme_light() +
-    theme(axis.text.x = element_text( size = 10))
-
-
-ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovRuntimesTotal.jpeg", plotRunTimesTotal, width = 12, height = 4)
-
-plotRunTimesTotallog10 <- resultsPerSampleAlex |> 
-    ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSampleAlex, meanRuntime)$package), y = runTime/60)) + 
-    geom_boxplot(outlier.size = 0.5) +
-    ggplot2::ylab("Run times (minutes)") +
-    ggplot2::xlab("Package name") +
-    ggtitle("Total runtimes of kataegis detection tools Alexandrov dataset log10 scale")  +
-    theme_light() +
-    theme(axis.text.x = element_text(size = 10)) +
-    ylim(0, 15) + 
-    scale_y_log10(breaks = c(0, 0.01, 0.1, 1, 5, 10, 15), labels = c(0, 0.01, 0.1, 1, 5, 10, 15)) +
-    stat_summary(fun.y=mean, geom="point", shape=20, size=3, color="red", fill="red")
-
-ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovRuntimesTotallog10.jpeg", plotRunTimesTotallog10, width = 12, height = 4)
-```
 
 Venn diagram that shows in which samples one or more kataegis foci is detected by the packages
 ```{r}
 katDetectadd <- resultsPerSampleAlex |> 
-    filter(package == "katdetectr" & (TP | FP)) |> 
+    filter(package == "Katdetectr" & (TP | FP)) |> 
     pull(sampleNames)
 
 clusteredMutationsadd <- resultsPerSampleAlex |> 
@@ -287,7 +250,7 @@ mafToolsadd <- resultsPerSampleAlex |>
     pull(sampleNames)
 
 kataegisadd <- resultsPerSampleAlex |> 
-    filter(package == "kataegis" & (TP | FP)) |> 
+    filter(package == "Kataegis" & (TP | FP)) |> 
     pull(sampleNames)
 
 seqkatadd <- resultsPerSampleAlex |> 
@@ -303,73 +266,25 @@ alexandrovAdd <- resultsPerSampleAlex |>
     pull(sampleNames)
 
 VennDiagram::venn.diagram(
-    x = list(katDetectadd, clusteredMutationsadd, mafToolsadd, alexandrovAdd, sigProfilerClustersadd),
-    category.names = c("Katdetectr", "ClusteredMutations", "MafTools", "Alexandrov", "SigProfilerClusters"),
+    x = list(katDetectadd, clusteredMutationsadd, mafToolsadd, sigProfilerClustersadd, alexandrovAdd),
+    category.names = c("Katdetectr", "ClusteredMutations", "MafTools", "SigProfilerClusters", "Alexandrov et al., 2013"),
     filename = "../figures/venn_diagram_kataegis_samples.png",
     output=T,
     imagetype="png",
     disable.logging = TRUE,
     
     cat.pos = c(0, 0, -120, 120, 0),
-    fill = c("dodgerblue", "goldenrod1", "darkorange1", "seagreen3", "orchid3"),
+    cat.dist = c(0.18, 0.21, 0.21, 0.25, 0.21),
+    fill = c("dodgerblue", "#66C2A5", "darkorange1", "#FFD92F", "orchid3"),
     alpha = 0.50,
     col = "black",
     rotation.degree	= -6
 )
 ```
 
-```{r}
-modelSampleRate <- function(IMDs){
-    
-    lambda <- log(2) / median(IMDs)
-    
-    return(lambda)
-}
+![Concordance in kataegis detection in WGS dataset per sample](../figures/venn_diagram_kataegis_samples.png)
 
-# function for calculating the nth root of x
-nthroot = function(x, n){
-    
-    y <- x^(1 / n)
-    
-    return(y)
-}
-
-# Function that defines the IMD cutoff specific for each segment
-# Within this function you can use all variables available in the slots: genomicVariants and segments
-IMDcutoffFun <- function(genomicVariants, segments){
-    
-    IMDs <- genomicVariants$IMD
-    totalVariants <-  segments$totalVariants
-    width <- segments |> dplyr::as_tibble() |> dplyr::pull(width)
-    
-    sampleRate <- modelSampleRate(IMDs)
-    
-    IMDcutoff <- -log(1 - nthroot(0.01 / width, totalVariants - 1)) / sampleRate
-    
-    IMDcutoff <- replace(IMDcutoff, IMDcutoff > 1000, 1000)
-    
-    return(IMDcutoff)
-}
-```
-
-
-```{r}
-katDetectadd[!katDetectadd %in% sigProfilerClustersadd]
-sigProfilerClustersadd[!sigProfilerClustersadd %in% katDetectadd]
-
-
-kd <- katdetectr::detectKataegis(alexandrovData$genomicVariants$"HX5T")
-kdcustom <- katdetectr::detectKataegis(alexandrovData$genomicVariants$"HX5T", IMDcutoff = IMDcutoffFun, minSizeKataegis = 4)
-katdetectr::rainfallPlot(kd)
-katdetectr::rainfallPlot(kdcustom, showSequence = "chr3", showSegmentation = TRUE)
-```
-```{r}
-resultsAlex |> 
-    filter(package == "SigProfilerClusters" & sampleNames == "HX5T")
-```
-
-
-```{r}
+```{r, warning = FALSE}
 findOverlappingFoci <- function(x){
     
     allFociInSample <- x
@@ -386,7 +301,7 @@ findOverlappingFoci <- function(x){
     
     focidf <- lapply(seq_len(length(fociList)), function(i){
         tibble(package = fociList[[i]], foci = names(fociList)[i])
-    }) %>% bind_rows()
+    }) |> bind_rows()
     
     return(focidf)
 }
@@ -398,12 +313,15 @@ alexKataegis <- alexandrovData$reportedKataegisFoci |>
 resultsAlexPerFoci <- resultsAlex |> 
     filter(detectedKataegisInSample) |>  
     bind_rows(alexKataegis) |> 
-    group_by(sampleNames) %>% 
-    group_modify(~ findOverlappingFoci(.x), keep = TRUE) %>% 
+    group_by(sampleNames) |> 
+    group_modify(~ findOverlappingFoci(.x), keep = TRUE) |> 
     ungroup()
+```
 
+
+```{r}
 katdetectrFoci <- resultsAlexPerFoci |> 
-    filter(package == "katdetectr") |> 
+    filter(package == "Katdetectr") |> 
     pull(foci)
 
 clusteredMutationsFoci <- resultsAlexPerFoci |> 
@@ -415,7 +333,7 @@ maftoolsFoci <- resultsAlexPerFoci |>
     pull(foci)
 
 kataegisPFoci <- resultsAlexPerFoci |> 
-    filter(package == "kataegis") |> 
+    filter(package == "Kataegis") |> 
     pull(foci)
 
 seqKatFoci <- resultsAlexPerFoci |> 
@@ -433,198 +351,71 @@ alexandrovFoci <- resultsAlexPerFoci |>
 
 VennDiagram::venn.diagram(
     x = list(katdetectrFoci, clusteredMutationsFoci, maftoolsFoci, sigProfilerClustersFoci, alexandrovFoci),
-    category.names = c("Katdetectr", "ClusteredMutations", "MafTools", "SigProfilerClusters", "Alexandrov"),
-    filename = "../figures/testvenn.png",
+    category.names = c("Katdetectr", "ClusteredMutations", "MafTools", "SigProfilerClusters", "Alexandrov et al., 2013"),
+    filename = "../figures/venn_diagram_kataegis_foci.png",
     output=T,
     imagetype="png",
     disable.logging = TRUE,
     
     cat.pos = c(0, 0, -120, 120, 0),
-    fill = c("dodgerblue", "goldenrod1", "darkorange1", "seagreen3", "orchid3"),
+    cat.dist = c(0.18, 0.21, 0.21, 0.25, 0.21),
+    fill = c("dodgerblue", "#66C2A5", "darkorange1", "#FFD92F", "orchid3"),
     alpha = 0.50,
     col = "black",
     rotation.degree	= -6
 )
 ```
 
+![Concordance in kataegis detection in WGS dataset per kataegis focus](../figures/venn_diagram_kataegis_foci.png)
 
 
+examples
 ```{r}
-resultsPerVariant |> 
-    #filter(TMBcat == "high") |> 
-    filter(package == "SigProfilerClusters") |> 
-    arrange(-FP)
+kdLUADE01014 <- katdetectr::detectKataegis(alexandrovData$genomicVariants$"LUAD-E01014")
+rfpkdLUADE01014 <- katdetectr::rainfallPlot(kdLUADE01014)
+rfpkdLUADE01014chr2 <- katdetectr::rainfallPlot(kdLUADE01014, showSequence = "chr2", showSegmentation = TRUE)
 
-resultsPerVariant |> 
-    filter(sampleNames == "PD4103a") 
-```
-
-```{r}
-kd <- katdetectr::detectKataegis(alexandrovData$genomicVariants$PD7409a)
-
-kd
-kd@kataegisFoci 
-katdetectr::rainfallPlot(kd)
+rfpkdLUADE01014
+rfpkdLUADE01014chr2
+ggsave(filename = "../figures/rainfall_LUADE01014.png", rfpkdLUADE01014, height = 4)
+ggsave(filename = "../figures/rainfall_LUADE01014_chr2.png", rfpkdLUADE01014chr2, height = 4)
 ```
 
 
 ```{r}
-modelSampleRate <- function(IMDs){
-    
-    lambda <- log(2) / median(IMDs)
-    
-    return(lambda)
-}
+kdAPGI_1956 <- katdetectr::detectKataegis(alexandrovData$genomicVariants$"APGI_1956")
+rfpAPGI_1956 <- katdetectr::rainfallPlot(kdAPGI_1956)
+APGI_1956chr18 <- katdetectr::rainfallPlot(kdAPGI_1956, showSequence = "chr18", showSegmentation = TRUE)
 
-nthroot = function(x, n){
-    
-    y <- x^(1 / n)
-    
-    return(y)
-}
+rfpAPGI_1956
+APGI_1956chr18
 
-determineIMDcutoff <- function(IMDs, totalVariants, width){
-    
-    sampleRate <- modelSampleRate(IMDs)
-    
-    IMDthreshold <- -log(1 - nthroot(0.01 / width, totalVariants - 1)) / sampleRate
-    
-    IMDthreshold <- replace(IMDthreshold, IMDthreshold > 1000, 1000)
-    
-    return(IMDthreshold)
-}
-
-
-kataegisFoci2 <-  kd@segments |> 
-    as_tibble() |> 
-    mutate(
-        IMDcutoff = determineIMDcutoff(kd@genomicVariants$IMD, totalVariants, width)
-    ) |> 
-    filter(meanIMD < IMDcutoff & totalVariants >= 6) |> 
-    determineKataegisFoci(genomicVariantsAnnotated = kd@genomicVariants)
-
-kd2 <- katdetectr::constructKatdetect(
-    genomicVariants = kd@genomicVariants, 
-    segments = kd@segments, 
-    kd@kataegisFoci
-    
-)
-
-katdetectr::rainfallPlot(kd)
-katdetectr::rainfallPlot(kd2)
-```
-
-```{r}
-kd@kataegisFoci
+ggsave(filename = "../figures/rainfall_APGI_1956.png", rfpAPGI_1956, height = 4)
+ggsave(filename = "../figures/rainfall_APGI_1956_chr18.png", APGI_1956chr18, height = 4)
 ```
 
 
 ```{r}
-kd@segments |> 
-    as_tibble() |> 
-    mutate(
-        IMDcutoff = determineIMDcutoff(kd@genomicVariants$IMD, totalVariants, width)
-    ) |> 
-    filter(meanIMD < IMDcutoff & totalVariants >= 6) |> 
-    determineKataegisFoci(genomicVariantsAnnotated = kd@genomicVariants)
-```
+kdPD4086a <- katdetectr::detectKataegis(alexandrovData$genomicVariants$"PD4086a")
+rfpPD4086a <- katdetectr::rainfallPlot(kdPD4086a)
+PD4086achr1 <- katdetectr::rainfallPlot(kdPD4086a, showSequence = "chr1", showSegmentation = TRUE)
 
-```{r}
-determineKataegisFoci <- function(kataegisSegments, genomicVariantsAnnotated){
-    
-    kataegisSegments |> 
-        .mergeKataegisSegments() |> 
-        .annotateKataegisSegments(genomicVariantsAnnotated)
-    
-}
+rfpPD4086a
+PD4086achr1
 
-.determinefociID <- function(segmentIDs){
-    
-    nFoci <- base::sum(c(1, base::diff(segmentIDs)) != 1) + 1
-    nSegmentsInFoci <- base::diff(c(1, base::which(c(1, base::diff(segmentIDs)) != 1), base::length(segmentIDs) + 1))
-    fociID <- base::rep(base::seq_len(nFoci), nSegmentsInFoci)
-    
-    return(fociID)
-}
-
-.mergeKataegisSegments <- function(kataegisSegments){
-    
-    # when no kataegis foci are present in the segments
-    if(base::nrow(kataegisSegments) == 0){
-        kataegisFoci <- tibble::tibble()
-    } else {
-        kataegisFoci <- kataegisSegments |>
-            dplyr::mutate(
-                fociID = .determinefociID(.data$segmentID)
-            ) |>
-            dplyr::group_by(.data$seqnames, .data$fociID) |>
-            dplyr::summarise(
-                .groups = "keep",
-                seqnames = base::unique(.data$seqnames),
-                start = base::min(.data$start),
-                end = base::max(.data$end),
-                sampleNames = base::unique(.data$sampleNames),
-                totalVariants = base::sum(.data$totalVariants),
-                firstVariantID = base::min(.data$firstVariantID),
-                lastVariantID = base::max(.data$lastVariantID),
-                meanIMD = base::mean(.data$meanIMD)
-            ) |>
-            dplyr::ungroup()
-    }
-    
-    return(kataegisFoci)
-}
-
-.annotateKataegisSegments <- function(kataegisFoci, genomicVariantsAnnotated){
-    
-    # when still no kataegis foci are detected after merging of segments
-    if(base::nrow(kataegisFoci) == 0){
-        kataegisFociAnnotated <- GenomicRanges::GRanges()
-    }else{
-        kataegisFociAnnotated <- kataegisFoci |>
-            # remove old fociID
-            dplyr::select(!.data$fociID) |>
-            # add new correct fociID number based on rowindex
-            tibble::rowid_to_column("fociID") |>
-            dplyr::rowwise() |>
-            # manually add the last variants to the detected kataegis foci
-            dplyr::mutate(
-                firstVariantOfSeqname = base::min(genomicVariantsAnnotated$variantID[as.logical(GenomicRanges::seqnames(genomicVariantsAnnotated) == .data$seqnames)]),
-                firstVariantID = base::ifelse(.data$firstVariantID != .data$firstVariantOfSeqname, .data$firstVariantID - 1, .data$firstVariantID),
-                totalVariants = .data$lastVariantID - .data$firstVariantID + 1
-            ) |>
-            dplyr::ungroup() |>
-            dplyr::select(!.data$firstVariantOfSeqname) |>
-            # update start of kataegis foci and add column with sample name
-            dplyr::mutate(
-                start = GenomicRanges::start(genomicVariantsAnnotated[.data$firstVariantID])
-            ) |>
-            # convert to granges
-            GenomicRanges::makeGRangesFromDataFrame(keep.extra.columns = TRUE)
-    }
-    
-    return(kataegisFociAnnotated)
-}
+ggsave(filename = "../figures/rainfall_PD4086a.png", rfpPD4086a, height = 4)
+ggsave(filename = "../figures/rainfall_PD4086a_chr1.png", PD4086achr1, height = 4)
 ```
 
 
 ```{r}
-kd@segments |> 
-    as_tibble() |> 
-    #rowwise() |> 
-    mutate(
-        sampleRate = modelSampleRate(kd@genomicVariants$IMD),
-        IMDcutoff = determineIMDcutoff(sampleRate, totalVariants, width)
-    ) |> 
-    filter(meanIMD < IMDcutoff & totalVariants >= 3) 
+kdPD7207a <- katdetectr::detectKataegis(alexandrovData$genomicVariants$"PD7207a")
+rfpPD7207a <- katdetectr::rainfallPlot(kdPD7207a)
+rfpPD7207achr6 <- katdetectr::rainfallPlot(kdPD7207a, showSequence = "chr6", showSegmentation = TRUE)
+
+rfpPD7207a
+rfpPD7207achr6
+
+ggsave(filename = "../figures/rainfall_PD7207a.png", rfpPD7207a, height = 4)
+ggsave(filename = "../figures/rainfall_PD7207a_chr6.png", rfpPD7207achr6, height = 4)
 ```
-
-
-```{r}
-kd@kataegisFoci
-
-resultsAlex |> 
-    filter(sampleNames == "PD4103a") |> 
-    filter(package == "katdetectr")
-```
-

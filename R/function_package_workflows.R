@@ -127,7 +127,8 @@ runKatdetectr <- function(genomicVariants, minSizeKataegis = 6, IMDcutoff = 1000
         penalty = penalty,
         pen.value = pen.value,
         method = method,
-        minseglen = minseglen
+        minseglen = minseglen,
+        BPPARAM = BiocParallel::MulticoreParam(workers = 4 ,progressbar = TRUE)
     )
     # determine the runtime
     runTime <- base::proc.time() - startTime

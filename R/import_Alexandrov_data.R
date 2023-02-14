@@ -158,11 +158,6 @@ annotateAlexandrovData <- function(AlexandrovDataProcessed, reportedKataegisFoci
 
 annotatePerSample <- function(sampleData, reportedKataegisFoci){
 
-    # i <- 1
-    # print(i)
-    # i <<- i + 1
-    # base::print(base::unique(sampleData$sampleNames))
-
     # convert to GRanges object
     sampleDataGr <- GenomicRanges::makeGRangesFromDataFrame(df = sampleData,
                                                             seqnames = 'chr',

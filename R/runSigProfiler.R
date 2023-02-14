@@ -1,13 +1,15 @@
 library("VariantAnnotation")
 library("dplyr")
 
-setwd(dir = "~/sig/")
-load(file = "data/synthetic_data.RData")
+#setwd(dir = "~/sig/")
+#load(file = "data/synthetic_data.RData")
 load(file = "data/alexandrov_data_processed.RData")
 
-setwd(dir = "sigProfilerResults")
+setwd(dir = "../SigProfilerClusters/")
 
 runSigProfilerClustered <- function(data){
+
+    #data <- alexandrovData$genomicVariants$"LUAD-E01014"
 
     sampleName <- unique(data@sampleNames)
 
@@ -37,6 +39,7 @@ runSigProfilerClustered <- function(data){
 
     startTime <- base::proc.time()
     system("python ../../prunSigProfiler.py")
+    #system("python3 ../../evaluation_katdetectr/python/prunSigProfiler.py")
     runTime <- base::proc.time() - startTime
 
     if(file.exists("./output/vcf_files_corrected/results_SigProfiler_clustered/subclasses/class2/results_SigProfiler_clustered_class2.txt")){

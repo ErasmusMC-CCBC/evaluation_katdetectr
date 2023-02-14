@@ -1,0 +1,24 @@
+Package: evaluation_katdetectr
+Title: Performance evaluation of Katdetectr, SeqKat, ClusteredMutations, Kataegis, SigProfilerClusters and MafTools
+Version: 0.0.0.9000
+Authors@R: 
+    c(
+    person("Daan", "Hazelaar", , "daanhazelaar@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-7513-6813")),
+    person("Job", "van Riet", , "j.vanriet@erasmusmc.nl", role = c("aut"),
+           comment = c(ORCID = "0000-0001-7767-7923"))
+Description: Performance evaluation of katdetectr and five alternative kataegis detection packages.
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.1
+Imports: 
+    ClusteredMutations (>= 1.0.1),
+    dplyr (>= 1.0.10),
+    ggplot2 (>= 3.4.0),
+    kataegis (>= 0.99.2),
+    katdetectr (>= 1.1.2),
+    maftools (>= 2.13.0),
+    mltools (>= 0.3.5),
+    SeqKat (>= 0.0.8),
+    tidyr (>= 1.2.1)
