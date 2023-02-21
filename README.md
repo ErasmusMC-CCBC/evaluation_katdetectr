@@ -4,7 +4,7 @@
 
 # Introduction
 
-This repository contains all the custom scripts used in the evaluation and comparison of [katdetectr]('https://github.com/ErasmusMC-CCBC/katdetectr/') as described in the corresponding Application Note (under submission).
+This repository contains all the custom scripts used in the evaluation and comparison of [katdetectr]('https://github.com/ErasmusMC-CCBC/katdetectr/') as described in the corresponding Technical Note (under submission).
 
 # Usage
 
