@@ -224,7 +224,6 @@ plotRunTimes.Syn <- resultsPerSample |>
 ggsave(file = "../../katdetectr_manusscript/figures/plotSyntheticRuntimes.jpeg", plotRunTimes.Syn, width = 7, height = 4)
 ```
 
-
 Example
 ```{r}
 kd124625_1_50_100 <- katdetectr::detectKataegis(dataSynthetic$genomicVariants$`124625_1_50_100`)
@@ -237,5 +236,3 @@ rfp124625_1_50_100zoom
 ggsave(filename = "../figures/rainfall_124625_1_50_100.png", rfp124625_1_50_100, height = 4)
 ggsave(filename = "../figures/rainfall_124625_1_50_100_zoom.png", rfp124625_1_50_100zoom, height = 4)
 ```
-
-
