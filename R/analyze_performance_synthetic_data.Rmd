@@ -53,9 +53,9 @@ resultsSynthetic <- dplyr::bind_rows("Kataegis" = resultsSyntheticAllTools$katae
                                      "SeqKat" = resultsSyntheticAllTools$seqkat,
                                      "ClusteredMutations" = resultsSyntheticAllTools$clusteredMutations,
                                      "Katdetectr" = resultsSyntheticAllTools$katdetectr,
-                                     #"Katdetectr (AMOC)" = resultsSyntheticKatdetectrAMOC,
-                                     #"Katdetectr (BinSeg)" = resultsSyntheticKatdetectrBinSeg,
-                                     #"Katdetectr (SegNeigh)" = resultsSyntheticKatdetectrSegNeigh,
+                                     # "Katdetectr (AMOC)" = resultsSyntheticKatdetectrAMOC,
+                                     # "Katdetectr (BinSeg)" = resultsSyntheticKatdetectrBinSeg,
+                                     # "Katdetectr (SegNeigh)" = resultsSyntheticKatdetectrSegNeigh,
                                      "SigProfilerClusters" = resultsSyntheticAllTools$sigProfilerClusters,
                                      .id = "package") |> 
     # join the parameters setting used for generating the synthethic data
@@ -84,7 +84,7 @@ resultsSynthetic <- dplyr::bind_rows("Kataegis" = resultsSyntheticAllTools$katae
 ```
 
 Calculate the performance of the kataegis detection tools regarding sample classification on the synthetic data set
-```{r, echo = FALSE}
+```{r}
 resultsPerSample <- resultsSynthetic |> 
     # summarise if a method detected kataegis in a sample
     group_by(package, sampleNames, runTime) |> 
@@ -140,18 +140,27 @@ performancePerVariantTMB <- resultsPerVariant |>
     ungroup()
 ```
 
+
 Plot nMCC as a function of the TMB for each packge
 ```{r, warning = FALSE}
 # use package ordering from total nMCC score on the Alexandrov dataset
 levelOrderPackages <- c("Katdetect", "SeqKat", "MafTools", "SigProfilerClusters", "ClusteredMutations", "kataegis")
+colors = c('ClusteredMutations' = '#66C2A5', 'Kataegis' = '#FC8D62', 'Katdetectr' = '#296d98', 'MafTools' = '#E78AC3', 'SeqKat' = '#A6D854', 'SigProfilerClusters' = '#FFD92F')
 
 
 plotnMMC.Syn <- performancePerVariantTMB |> 
-    ggplot2::ggplot(aes(x = factor(TMB), y = nMCC, group = package, colour = factor(package, levels = levelOrderPackages))) +
-    ggplot2::geom_line(size = 0.5, alpha = 0.4, lty = 11) +
-    ggplot2::geom_point(aes(y = nMCC, fill = package), col = 'black', shape = 21, lwd = 2, position = ggbeeswarm::position_quasirandom(width = .05)) +
+    ggplot2::ggplot(aes(x = factor(TMB), y = nMCC, group = package, color = package)) +
+    ggplot2::geom_line(aes(y = nMCC, fill = package), size = 0.5, alpha = 0.4, lty = 11) +
+    ggplot2::geom_point(
+        aes(y = nMCC, fill = package),
+        size = 3.5,
+        col = 'black',
+        shape = 21,
+        lwd = 2,
+        position = ggbeeswarm::position_quasirandom(width = .05)) +
     ggplot2::scale_fill_manual(values = colors, guide = 'none') +
     ggplot2::scale_color_manual(values = colors, guide = 'none') +
+    
     ggplot2::scale_x_discrete(labels=c(
         "low" = "Low (TMB < 0.1)<br>n = 301", 
         "mid" = "Mid (0.1 ≥ TMB < 10)<br>n = 186",
@@ -159,6 +168,10 @@ plotnMMC.Syn <- performancePerVariantTMB |>
     ) +
     ggplot2::ylim(0.5, 1) +
     ggplot2::labs(x = "TMB class", y  = 'nMCC') +
+    theme(axis.text.x = element_text(face="bold", size=12),
+          axis.text.y = element_text(face="bold", size=12),
+          axis.title = element_text(size=14,face="bold")
+    ) +
     theme_Job +
     scale_x_discrete(labels=c(
         "0.1" = "0.1<br>n = 128",
@@ -170,7 +183,15 @@ plotnMMC.Syn <- performancePerVariantTMB |>
         "100" = "100<br>n = 128",
         "500" = "500<br>n = 128")
     )
+
+ggsave(plotnMMC.Syn, filename = "../figures/nMCC_TMB_synthetic_data.png", width = 7, height = 4)
+
+performancePerVariantTMB |> write.csv(file = "../results/performance_kataegis_detection_tools_per_TMB_synthetic_data.csv")
+    
 ```
+
+
+
 
 Plot heatmap with the performance metrics
 ```{r}
@@ -196,7 +217,7 @@ plotPerformancePerVariantTMB <- performancePerVariantTMB |>
     scale_x_discrete(position = "top") +
     theme(
         axis.text.x = element_text(angle = 0, ),
-        text = ggplot2::element_text(size=5, family='Helvetica'),
+        text = ggplot2::element_text(size = 5, family = 'Helvetica'),
         strip.background = ggplot2::element_blank(),
         panel.background = element_blank(),
         legend.title = element_blank()
@@ -213,15 +234,21 @@ colors = c('ClusteredMutations' = '#66C2A5', 'Kataegis' = '#FC8D62', 'Katdetectr
 plotRunTimes.Syn <- resultsPerSample |> 
     ggplot2::ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSample, meanRuntime)$package), y = runTime, fill = package)) + 
     gghalves::geom_half_point_panel(size = 1, col = 'black', shape = 21) +
-    gghalves::geom_half_boxplot(outlier.shape = NA) +
+    gghalves::geom_half_violin(outlier.shape = NA, scale = "width") +
     ggplot2::scale_fill_manual(values = colors, guide = 'none') +
     ggplot2::scale_color_manual(values = colors, guide = 'none') +
-    ggplot2::scale_y_continuous(trans = scales::pseudo_log_trans(), breaks = c(0:5, 10, 25, 50, seq(100,500,by = 100), 1000)) +
+    ggplot2::scale_y_continuous(trans = scales::pseudo_log_trans(), breaks = c(0, 1, 2, 5, 10, 25, 50, 100, 250, 500, 1000))  +
     ggplot2::labs(y = "Runtime (seconds)", x = 'Packages') +
     ggplot2::geom_text(data = resultsPerSample %>% dplyr::group_by(package) %>% dplyr::summarise(mean = mean(runTime, na.rm = T)), aes(x = package, y = -.5, label = round(mean, 1)), size = 3, fontface='bold') +
+    theme(axis.text.x = element_text(face="bold", size=12, angle = 25, hjust = 1),
+          axis.text.y = element_text(face="bold", size=12),
+          axis.title = element_text(size=14,face="bold")
+    ) +
     theme_Job
 
-ggsave(file = "../../katdetectr_manusscript/figures/plotSyntheticRuntimes.jpeg", plotRunTimes.Syn, width = 7, height = 4)
+ggsave(file = "../figures/plotSyntheticRuntimesCPalgos.png", plotRunTimes.Syn, width = 7, height = 4)
+
+resultsPerSample |> write.csv("../results/performance_kataegis_detection_tools_per_sample_synthetic_data.csv")
 ```
 
 
@@ -236,6 +263,11 @@ rfp124625_1_50_100zoom
 
 ggsave(filename = "../figures/rainfall_124625_1_50_100.png", rfp124625_1_50_100, height = 4)
 ggsave(filename = "../figures/rainfall_124625_1_50_100_zoom.png", rfp124625_1_50_100zoom, height = 4)
+
+kd124625_1_50_100@genomicVariants |> 
+    as_tibble() |> 
+    dplyr::select(!revmap) |> 
+    write.csv("../results/rainfall_plot_data_124625_1_50_100.csv")
 ```
 
 

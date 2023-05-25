@@ -22,6 +22,8 @@ load(file = "../data/sampleOrigin.RData")
 source(file = 'function_calculateMetrics.R')
 source(file = "function_calculateConfusionVariants.R")
 source(file = "./ggplot_theme.R")
+
+load("../data/alexandrov_data_processed_WGS_and_WES.RData")
 ```
 
 
@@ -158,7 +160,7 @@ levelOrderTMB <- c("Low (TMB < 0.1)", "Mid (0.1 >= TMB < 10)", "High (TMB >= 10)
 levelOrderTMB <- c("low", "mid", "high")
 levelOrderPackages <- factor(performancePerVariantAlex$package, levels = arrange(performancePerVariantAlex, nMCC)$package)
 
-colors = c('ClusteredMutations' = '#66C2A5', 'Kataegis' = '#FC8D62', 'Katdetectr' = '#8DA0CB', 'MafTools' = '#E78AC3', 'SeqKat' = '#A6D854', 'SigProfilerClusters' = '#FFD92F')
+colors = c('ClusteredMutations' = '#66C2A5', 'Kataegis' = '#FC8D62', 'Katdetectr' = '#296d98', 'MafTools' = '#E78AC3', 'SeqKat' = '#A6D854', 'SigProfilerClusters' = '#FFD92F')
 
 plotnMMC.Alex <- performancePerVariantTMBAlex |> 
     ggplot2::ggplot(aes(
@@ -166,20 +168,34 @@ plotnMMC.Alex <- performancePerVariantTMBAlex |>
         y = nMCC, 
         group = factor(package, levels = levelOrderPackages), 
         colour = factor(package, levels = levelOrderPackages))) +
+    ggplot2::geom_point(
+        aes(x = factor(TMBcat, levels = levelOrderTMB), y = nMCC, fill = package), 
+        size = 3.5,
+        col = 'black', 
+        shape = 21, 
+        lwd = 2, 
+        position = ggbeeswarm::position_quasirandom(width = .05)) +
     ggplot2::geom_line(size = 0.5, alpha = 0.4, lty = 11) +
-    ggplot2::geom_point(aes(x = factor(TMBcat, levels = levelOrderTMB), y = nMCC, fill = package), col = 'black', shape = 21, lwd = 2, position = ggbeeswarm::position_quasirandom(width = .05)) +
-    ggplot2::scale_fill_manual(values = colors) +
+    ggplot2::scale_fill_manual(values = colors, guide = 'none') +
     ggplot2::scale_color_manual(values = colors, guide = 'none') +
-    ggplot2::scale_x_discrete(labels=c(
+    ggplot2::scale_x_discrete(labels = c(
         "low" = "Low (TMB < 0.1)<br>n = 301", 
         "mid" = "Mid (0.1 ≥ TMB < 10)<br>n = 186",
         "high" = "High (TMB ≥ 10)<br>n = 20")
     ) +
     ggplot2::ylim(0.5, 1) +
     ggplot2::labs(x = "TMB class", y = 'nMCC') +
-    theme_Job
+    theme(axis.text.x = element_text(face="bold", size=12),
+          axis.text.y = element_text(face="bold", size=12),
+          axis.title = element_text(size=14,face="bold")
+    ) +
+    theme_Job 
 
-ggsave(plotnMMC.Alex, filename = "../figures/legend.svg")
+plotnMMC.Alex
+
+ggsave(plotnMMC.Alex, filename = "../figures/nMCC_TMB_WGSdata.png", width = 7, height = 4)
+
+performancePerVariantTMBAlex |> write.csv(file = "../results/performance_kataegis_detection_tools_per_TMB_WGS_data.csv")
 ```
 
 
@@ -223,15 +239,22 @@ colors = c('ClusteredMutations' = '#66C2A5', 'Kataegis' = '#FC8D62', 'Katdetectr
 plotRunTimes.Alex <- resultsPerSampleAlex |> 
     ggplot2::ggplot(mapping = aes(x = factor(package, levels = arrange(performancePerSampleAlex, meanRuntime)$package), y = runTime, fill = package)) + 
     gghalves::geom_half_point_panel(size = 1, col = 'black', shape = 21) +
-    gghalves::geom_half_boxplot(outlier.shape = NA) +
+    gghalves::geom_half_violin(outlier.shape = NA, scale = "width") +
     ggplot2::scale_fill_manual(values = colors, guide = 'none') +
     ggplot2::scale_color_manual(values = colors, guide = 'none') +
-    ggplot2::scale_y_continuous(trans = scales::pseudo_log_trans(), breaks = c(0:5, 10, 25, 50, seq(100,500,by = 100), 1000)) +
+    ggplot2::scale_y_continuous(trans = scales::pseudo_log_trans(), breaks = c(0, 1, 2, 5, 10, 25, 50, 100, 250, 500, 1000)) +
     ggplot2::labs(y = "Runtime (seconds)", x = 'Packages') +
     ggplot2::geom_text(data = resultsPerSampleAlex %>% dplyr::group_by(package) %>% dplyr::summarise(mean = mean(runTime, na.rm = T)), aes(x = package, y = -.5, label = round(mean, 1)), size = 3, fontface='bold') +
+    theme(axis.text.x = element_text(face="bold", size=12, angle = 25, hjust = 1),
+          axis.text.y = element_text(face="bold", size=12),
+          axis.title = element_text(size=14,face="bold")
+    ) +
     theme_Job
+plotRunTimes.Alex
 
-ggsave(file = "../../katdetectr_manusscript/figures/plotAlexandrovRuntimes.jpeg", plotRunTimes.Alex, width = 7, height = 4)
+ggsave(file = "../figures/plotAlexandrovRuntimes.png", plotRunTimes.Alex, width = 7, height = 4)
+
+resultsPerSampleAlex |> write.csv("../results/performance_kataegis_detection_tools_per_sample_WGS_data.csv")
 ```
 
 
@@ -241,29 +264,43 @@ katDetectadd <- resultsPerSampleAlex |>
     filter(package == "Katdetectr" & (TP | FP)) |> 
     pull(sampleNames)
 
+write.csv(katDetectadd, "../results/kataegis_samples_ID_katdetectr_WGS_data.csv")
+
 clusteredMutationsadd <- resultsPerSampleAlex |> 
     filter(package == "ClusteredMutations" & (TP | FP)) |> 
     pull(sampleNames)
+
+write.csv(clusteredMutationsadd, "../results/kataegis_samples_ID_clusteredMutations_WGS_data.csv")
 
 mafToolsadd <- resultsPerSampleAlex |> 
     filter(package == "MafTools" & (TP | FP)) |> 
     pull(sampleNames)
 
+write.csv(mafToolsadd, "../results/kataegis_samples_ID_maftools_WGS_data.csv")
+
 kataegisadd <- resultsPerSampleAlex |> 
     filter(package == "Kataegis" & (TP | FP)) |> 
     pull(sampleNames)
+
+write.csv(kataegisadd, "../results/kataegis_samples_ID_kataegis_WGS_data.csv")
 
 seqkatadd <- resultsPerSampleAlex |> 
     filter(package == "SeqKat" & (TP | FP)) |> 
     pull(sampleNames)
 
+write.csv(seqkatadd, "../results/kataegis_samples_ID_seqkat_WGS_data.csv")
+
 sigProfilerClustersadd <- resultsPerSampleAlex |> 
     filter(package == "SigProfilerClusters" & (TP | FP)) |> 
     pull(sampleNames)
 
+write.csv(sigProfilerClustersadd, "../results/kataegis_samples_ID_sigProfilerClusters_WGS_data.csv")
+
 alexandrovAdd <- resultsPerSampleAlex |> 
     filter(kataegisInSample) |> 
     pull(sampleNames)
+
+write.csv(alexandrovAdd, "../results/kataegis_samples_ID_alexandrov2013_WGS_data.csv")
 
 VennDiagram::venn.diagram(
     x = list(katDetectadd, clusteredMutationsadd, mafToolsadd, sigProfilerClustersadd, alexandrovAdd),
@@ -275,14 +312,16 @@ VennDiagram::venn.diagram(
     
     cat.pos = c(0, 0, -120, 120, 0),
     cat.dist = c(0.18, 0.21, 0.21, 0.25, 0.21),
-    fill = c("dodgerblue", "#66C2A5", "darkorange1", "#FFD92F", "orchid3"),
+    fill = c("dodgerblue", "#66C2A5", "orchid3", "#FFD92F", "darkorange1"),
     alpha = 0.50,
     col = "black",
     rotation.degree	= -6
 )
+
 ```
 
 ![Concordance in kataegis detection in WGS dataset per sample](../figures/venn_diagram_kataegis_samples.png)
+
 
 ```{r, warning = FALSE}
 findOverlappingFoci <- function(x){
@@ -324,29 +363,43 @@ katdetectrFoci <- resultsAlexPerFoci |>
     filter(package == "Katdetectr") |> 
     pull(foci)
 
+write.csv(katdetectrFoci, "../results/kataegis_foci_ID_katdetectr_WGS_data.csv")
+
 clusteredMutationsFoci <- resultsAlexPerFoci |> 
     filter(package == "ClusteredMutations") |> 
     pull(foci)
+
+write.csv(clusteredMutationsFoci, "../results/kataegis_foci_ID_clusteredMutations_WGS_data.csv")
 
 maftoolsFoci <- resultsAlexPerFoci |> 
     filter(package == "MafTools") |> 
     pull(foci)
 
+write.csv(maftoolsFoci, "../results/kataegis_foci_ID_maftools_WGS_data.csv")
+
 kataegisPFoci <- resultsAlexPerFoci |> 
     filter(package == "Kataegis") |> 
     pull(foci)
+
+write.csv(kataegisPFoci, "../results/kataegis_foci_ID_kataegis_WGS_data.csv")
 
 seqKatFoci <- resultsAlexPerFoci |> 
     filter(package == "SeqKat") |> 
     pull(foci)
 
+write.csv(seqKatFoci, "../results/kataegis_foci_ID_seqkat_WGS_data.csv")
+
 sigProfilerClustersFoci <- resultsAlexPerFoci |> 
     filter(package == "SigProfilerClusters") |> 
     pull(foci)
 
+write.csv(sigProfilerClustersFoci, "../results/kataegis_foci_ID_sigProfilerClusters_WGS_data.csv")
+
 alexandrovFoci <- resultsAlexPerFoci |> 
     filter(package == "Alexandrov") |> 
     pull(foci)
+
+write.csv(alexandrovFoci, "../results/kataegis_foci_ID_alexandrov2013_WGS_data.csv")
 
 
 VennDiagram::venn.diagram(
@@ -359,7 +412,7 @@ VennDiagram::venn.diagram(
     
     cat.pos = c(0, 0, -120, 120, 0),
     cat.dist = c(0.18, 0.21, 0.21, 0.25, 0.21),
-    fill = c("dodgerblue", "#66C2A5", "darkorange1", "#FFD92F", "orchid3"),
+    fill = c("dodgerblue", "#66C2A5", "orchid3", "#FFD92F", "darkorange1"),
     alpha = 0.50,
     col = "black",
     rotation.degree	= -6
@@ -379,6 +432,11 @@ rfpkdLUADE01014
 rfpkdLUADE01014chr2
 ggsave(filename = "../figures/rainfall_LUADE01014.png", rfpkdLUADE01014, height = 4)
 ggsave(filename = "../figures/rainfall_LUADE01014_chr2.png", rfpkdLUADE01014chr2, height = 4)
+
+kdLUADE01014@genomicVariants |> 
+    as_tibble() |> 
+    dplyr::select(!revmap) |> 
+    write.csv("../results/rainfall_plot_data_LUAD-E01014.csv")
 ```
 
 
@@ -392,6 +450,11 @@ APGI_1956chr18
 
 ggsave(filename = "../figures/rainfall_APGI_1956.png", rfpAPGI_1956, height = 4)
 ggsave(filename = "../figures/rainfall_APGI_1956_chr18.png", APGI_1956chr18, height = 4)
+
+kdAPGI_1956@genomicVariants |> 
+    as_tibble() |> 
+    dplyr::select(!revmap) |> 
+    write.csv("../results/rainfall_plot_data_APGI_1956.csv")
 ```
 
 
@@ -405,6 +468,11 @@ PD4086achr1
 
 ggsave(filename = "../figures/rainfall_PD4086a.png", rfpPD4086a, height = 4)
 ggsave(filename = "../figures/rainfall_PD4086a_chr1.png", PD4086achr1, height = 4)
+
+kdPD4086a@genomicVariants |> 
+    as_tibble() |> 
+    dplyr::select(!revmap) |> 
+    write.csv("../results/rainfall_plot_data_PD4086a.csv")
 ```
 
 
@@ -418,4 +486,33 @@ rfpPD7207achr6
 
 ggsave(filename = "../figures/rainfall_PD7207a.png", rfpPD7207a, height = 4)
 ggsave(filename = "../figures/rainfall_PD7207a_chr6.png", rfpPD7207achr6, height = 4)
+
+kdPD7207a@genomicVariants |> 
+    as_tibble() |> 
+    dplyr::select(!revmap) |> 
+    write.csv("../results/rainfall_plot_data_PD7207a.csv")
 ```
+
+```{r}
+kdPD7409a <- katdetectr::detectKataegis(alexandrovDataWgsWes$genomicVariants$PD7409a)
+rfpPD7409a <- katdetectr::rainfallPlot(kdPD7409a)
+rfpPD7409achr8 <- katdetectr::rainfallPlot(kdPD7409a, showSequence = "chr8", showSegmentation = TRUE)
+
+rfpPD7409a
+rfpPD7409achr8
+
+ggsave(filename = "../figures/rainfall_PD7049a.png", rfpPD7409a, height = 4)
+ggsave(filename = "../figures/rainfall_PD7049a_chr8.png", rfpPD7409achr8, height = 4)
+
+kdPD7409a@genomicVariants |> 
+    as_tibble() |> 
+    dplyr::select(!revmap) |> 
+    write.csv("../results/rainfall_plot_data_PD7409a.csv")
+```
+
+```{r}
+x <- alexandrovDataWgsWes$genomicVariants |> names()
+
+sum(x == "PD7049a")
+```
+

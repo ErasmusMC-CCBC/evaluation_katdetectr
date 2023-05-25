@@ -3,9 +3,9 @@ library("dplyr")
 
 #setwd(dir = "~/sig/")
 #load(file = "data/synthetic_data.RData")
-load(file = "data/alexandrov_data_processed.RData")
-
-setwd(dir = "../SigProfilerClusters/")
+# load(file = "data/alexandrov_data_processed.RData")
+#
+# setwd(dir = "../SigProfilerClusters/")
 
 runSigProfilerClustered <- function(data){
 
@@ -27,7 +27,7 @@ runSigProfilerClustered <- function(data){
             mutss = "SOMATIC",
             mutType = "SNV"
         ) |>
-        select(CancerType, sampleNames, NGS_method, referenceGenome, mutType, seqnames, start, end, ref, alt, mutss)
+        dplyr::select(CancerType, sampleNames, NGS_method, referenceGenome, mutType, seqnames, start, end, ref, alt, mutss)
 
     # write data to disk as a .txt file
     write.table(vrFormatted, file = "data_SigProf.txt", row.names = FALSE, col.names = FALSE, quote = FALSE, sep = "\t")
@@ -45,7 +45,7 @@ runSigProfilerClustered <- function(data){
     if(file.exists("./output/vcf_files_corrected/results_SigProfiler_clustered/subclasses/class2/results_SigProfiler_clustered_class2.txt")){
         if(nrow(readr::read_table("./output/vcf_files_corrected/results_SigProfiler_clustered/subclasses/class2/results_SigProfiler_clustered_class2.txt")) != 0){
             results <- readr::read_table("./output/vcf_files_corrected/results_SigProfiler_clustered/subclasses/class2/results_SigProfiler_clustered_class2.txt") |>
-                select(seqnames = chr, sampleNames = samples, start, end, ref, alt, fociID = IMDplot, IMD) |>
+                dplyr::select(seqnames = chr, sampleNames = samples, start, end, ref, alt, fociID = IMDplot, IMD) |>
                 group_by(fociID) |>
                 summarise(
                     sampleNames = as.character(unique(sampleNames)),
@@ -56,7 +56,7 @@ runSigProfilerClustered <- function(data){
                     seqnames = paste0("chr", unique(seqnames)),
                     runTime = runTime[3]
                 ) |>
-                select(seqnames, start, end, totalVariants, meanIMD, sampleNames, runTime)
+                dplyr::select(seqnames, start, end, totalVariants, meanIMD, sampleNames, runTime)
         }else {
             results <- tibble::tibble(seqnames = NA, start = NA, end = NA, totalVariants = NA, meanIMD = NA, sampleNames = sampleName, runTime = runTime[3])
         }
@@ -71,8 +71,8 @@ runSigProfilerClustered <- function(data){
     return(results)
 }
 
-allResultsAlexandrov <- bind_rows(lapply(alexandrovData$genomicVariants["LUAD-E01014"], runSigProfilerClustered))
-save(object = allResultsAlexandrov, file = "data/allResultsAlexandrovSigProfiler.Rdata")
-
-allResultsSynthetic <- bind_rows(lapply(dataSynthetic$genomicVariants, runSigProfilerClustered))
-save(object = allResultsSynthetic, file = "data/allResultsSyntheticSigProfiler.Rdata")
+# allResultsAlexandrov <- bind_rows(lapply(alexandrovData$genomicVariants["LUAD-E01014"], runSigProfilerClustered))
+# save(object = allResultsAlexandrov, file = "data/allResultsAlexandrovSigProfiler.Rdata")
+#
+# allResultsSynthetic <- bind_rows(lapply(dataSynthetic$genomicVariants, runSigProfilerClustered))
+# save(object = allResultsSynthetic, file = "data/allResultsSyntheticSigProfiler.Rdata")

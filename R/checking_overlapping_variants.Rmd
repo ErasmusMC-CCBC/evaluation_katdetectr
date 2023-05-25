@@ -1,0 +1,78 @@
+---
+title: "check overlapping variants"
+author: "Daan Hazelaar"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(VariantAnnotation)
+library(SeqKat)
+source(file = "R/function_package_workflows.R")
+source(file = "R/runSigProfiler.R")
+```
+
+Manual generation of a VRanges object that contains 10 overlapping variants
+```{r}
+startLocationsRandomSNVs <- c(1003484, 1007628, 1044954, 1052411, 1062310, 1064989, 1073941, 1082478, 1084582, 1094532)
+endLocationsRandomSNVs <- startLocationsRandomSNVs
+
+startLocationKataegisSNVs <- c(1050178, 1050184, 1050187, 1050421, 1050430, 1050441, 1050510, 1050632, 1050877, 1050981)
+endLocationKataegisSNVs <- startLocationKataegisSNVs
+
+startLocationINDEL <- 1050800
+endLocationINDEL <- 1052000
+
+startlocationOverlappingSNVs <- c(1003484, 1007628, 1050178, 1050184, 1020000, 1020000, 1020000, 1020005, 1020005)
+endlocationOverlappingSNVs <- startlocationOverlappingSNVs
+
+testTib <- tibble(
+    sampleName = "testSyntheticOverlapSample",
+    seqnames = "chr1",
+    start = c(startLocationsRandomSNVs, startLocationKataegisSNVs, startLocationINDEL, startlocationOverlappingSNVs),
+    end = c(endLocationsRandomSNVs, endLocationKataegisSNVs, endLocationINDEL, endlocationOverlappingSNVs),
+    ref = "A",
+    alt = "T"
+)
+
+testVR <- testTib |> 
+    GenomicRanges::makeGRangesFromDataFrame(keep.extra.columns = TRUE) |> 
+    VariantAnnotation::makeVRangesFromGRanges()
+
+testMAF <- testVR |> 
+    tibble::as_tibble() |>
+    dplyr::mutate(
+        Hugo_Symbol = 'Unknown',
+        Variant_Classification = 'Missense_Mutation',
+        Variant_Type = 'SNP',
+    ) |>
+    dplyr::select(
+        Hugo_Symbol,
+        Chromosome = .data$seqnames,
+        Start_Position = .data$start,
+        End_Position = .data$end,
+        Reference_Allele = .data$ref,
+        Tumor_Seq_Allele2 = .data$alt,
+        Variant_Classification,
+        Variant_Type,
+        Tumor_Sample_Barcode = .data$sampleNames
+    )
+```
+
+Run katdetectr
+```{r}
+kd <- katdetectr::detectKataegis(testVR)
+katdetectr::rainfallPlot(kd)
+```
+
+Run other packages
+```{r}
+runMaftools(genomicVariants = testMAF)
+runSeqkat(genomicVariants = testVR)
+runKataegis(genomicVariants = testVR)
+runClusteredMutations(genomicVariants = testVR)
+```
+
