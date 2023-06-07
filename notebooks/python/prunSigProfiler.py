@@ -6,7 +6,7 @@ sigSim.SigProfilerSimulator(
 	project_path="./",
 	genome="GRCh37",
 	contexts = ['288'],
-	simulations=1,
+	simulations=100,
 	overlap=True)
 
 

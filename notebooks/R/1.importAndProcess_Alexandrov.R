@@ -42,6 +42,11 @@ importAlexandrovData <- function(path = "notebooks/data/") {
 
     futile.logger::flog.info("Saving processed Alexandrov et al. (2013) data under: %s/alexandrov_data_processed.RData", path)
 
+    # Create the path if it does not exist
+    if (!base::dir.exists(path)) {
+        base::dir.create(path)
+    }
+    
     base::save(alexandrovData, file = file.path(path, "alexandrov_data_processed.RData"))
 
     futile.logger::flog.info("Done")
