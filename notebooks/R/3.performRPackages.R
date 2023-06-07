@@ -9,9 +9,68 @@ runTools_Alexandrov <- function(data = "data/alexandrov_data_processed.RData") {
     alexandrovData <- NULL
     load(file = data, verbose = FALSE)
 
+    # Test with only 10 samples.
+    alexandrovData$genomicVariants <- alexandrovData$genomicVariants[1:10]
+
     futile.logger::flog.info("Running katdetectr")
-    resultsAlexKatdetectr <- dplyr::bind_rows(base::lapply(alexandrovData$genomicVariants, runKatdetectr, minSizeKataegis = 6, test.stat = "Exponential", penalty = "BIC", pen.value = 0, minseglen = 2))
+    resultsAlexKatdetectr <- dplyr::bind_rows(
+        base::lapply(alexandrovData$genomicVariants, runKatdetectr, minSizeKataegis = 6, test.stat = "Exponential", penalty = "BIC", pen.value = 0, minseglen = 2)
+    )
     save(resultsAlexKatdetectr, file = "./data/resultsAlexKatdetectr.RData")
+
+    # Generate the per chromosome files.
+    futile.logger::flog.info("Setting-up SeqKat requirements")
+
+    # Check if the per chromosome files are already present.
+    if (base::dir.exists("./data/perChromosome")) {
+        futile.logger::flog.info("Per chromosome files already present, skipping")
+    }else {
+
+        chromosomes <- unique(GenomeInfoDb::seqnames(alexandrovData$genomicVariants[[1]]))
+        base::lapply(chromosomes, function(x) {
+            seq <- Biostrings::getSeq(BSgenome.Hsapiens.UCSC.hg19::BSgenome.Hsapiens.UCSC.hg19, x)
+
+            if (x == "chrX") x <- "chr23"
+            if (x == "chrY") x <- "chr24"
+
+            # Write seq to fasta file.
+            futile.logger::flog.debug("Writing chromosome %s to fasta file", x)
+            seqFile <- file.path("./data/perChromosome", paste0(x, ".fa"))
+
+            # Create directory if it does not exist.
+            if (!base::dir.exists("./data/perChromosome")) {
+                base::dir.create("./data/perChromosome")
+            }
+
+            Biostrings::writeXStringSet(Biostrings::DNAStringSet(seq), seqFile)
+
+        })
+
+        # Write the chromosome lengths to file.
+        futile.logger::flog.debug("Writing chromosome lengths to file")
+        chrLengths <- GenomeInfoDb::seqlengths(BSgenome.Hsapiens.UCSC.hg19::BSgenome.Hsapiens.UCSC.hg19)
+        chrLengths <- base::as.data.frame(chrLengths)
+        chrLengths$chr <- base::rownames(chrLengths)
+
+        chrLengths <- chrLengths |>
+            dplyr::select(num = chr, length = chrLengths) |>
+            dplyr::filter(num %in% chromosomes) |>
+            dplyr::mutate(
+                num = dplyr::if_else(num == "chrX", "chr23", num),
+                num = dplyr::if_else(num == "chrY", "chr24", num)
+                )
+
+        # Add the sum of all chromosomes.
+        chrLengths <- chrLengths |>
+            dplyr::add_row(num = "sum.f", length = 3036303846) |>
+            dplyr::add_row(num = "sum.m", length = sum(chrLengths$length))
+
+        # Remove chr-prefix.
+        chrLengths$num <- gsub("chr", "", chrLengths$num)
+
+        # Write to file.
+        write.table(chrLengths, file = "./data/perChromosome/length_hg19_chr.txt", quote = FALSE, sep = "\t", row.names = FALSE)
+    }
 
     futile.logger::flog.info("Running SeqKat")
     resultsAlexSeqkat <- dplyr::bind_rows(base::lapply(alexandrovData$genomicVariants, runSeqkat))
@@ -158,6 +217,8 @@ runMaftools <- function(genomicVariants) {
 
 runSeqkat <- function(genomicVariants) {
 
+    require(SeqKat)
+
     # Convert to SeqKat-friendly formats.
     data <- GenomicRanges::sort(genomicVariants) |>
         tibble::as_tibble() |>
@@ -177,12 +238,12 @@ runSeqkat <- function(genomicVariants) {
         sigcutoff = 5,
         mutdistance = 3.2,
         segnum = 4,
-        ref.dir = "./data/perChromosome/",
+        ref.dir = "data/perChromosome",
         bed.file = tmpFile,
         output.dir = file.path(base::tempdir(), paste0(unique(Biobase::sampleNames(genomicVariants)))),
         chromosome = "all",
-        chromosome.length.file = NULL,
-        trinucleotide.count.file = "misc/trinucleotide_hg19_whole_genome.txt"
+        chromosome.length.file = "./data/perChromosome/length_hg19_chr.txt",
+        trinucleotide.count.file = "./misc/trinucleotide_hg19_whole_genome.txt"
     )
 
     runTime <- base::proc.time() - startTime

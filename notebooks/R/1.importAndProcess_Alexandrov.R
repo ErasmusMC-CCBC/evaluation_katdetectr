@@ -86,7 +86,6 @@ getAlexandrovLinks <- function() {
 }
 
 downloadAlexandrovData <- function(linksAlexandrovData) {
-
     AlexandrovDataRaw <- base::lapply(linksAlexandrovData, function(link) {
         data <- readr::read_delim(
             file = as.character(link),
@@ -114,7 +113,7 @@ processAlexandrovData <- function(AlexandrovDataRaw) {
         # The following three sample names are duplicated for different samples
         # change the names of these samples
         dplyr::filter(.data$sampleNames == 266 | .data$sampleNames == 325 | .data$sampleNames == 91) |>
-        dplyr::group_by(.$tissue) |>
+        dplyr::group_by(tissue) |>
         dplyr::mutate(sampleNames = base::paste0(.data$sampleNames, "_", .data$tissue)) |>
         # add the renamed samples back to the complete dataset
         dplyr::bind_rows(AlexandrovDataRaw[!AlexandrovDataRaw$sampleNames %in% c(266, 325, 91), ]) |>
@@ -131,7 +130,7 @@ importReportedKataegisFoci <- function() {
     curl::curl_download(link, tmpFile)
 
     reportedKataegisFoci <- readxl::read_xls(tmpFile, range = "B4:G877") |>
-        dplyr::select(sampleNames = .data$`Sample Name`, totalVariants = .data$`No of variants`, dplyr::everything()) |>
+        dplyr::select(sampleNames = `Sample Name`, totalVariants = `No of variants`, dplyr::everything()) |>
         GenomicRanges::makeGRangesFromDataFrame(keep.extra.columns = TRUE)
 
     # Change to UCSC nomenclature.
@@ -144,14 +143,13 @@ importReportedKataegisFoci <- function() {
 }
 
 addSequencingTechnique <- function(AlexandrovDataProcessed) {
-    sampleOrigin <- readr::read_tsv("misc/sampleOrigin.txt", col_types = 'c')
+    sampleOrigin <- readr::read_tsv("misc/sampleOrigin.txt", col_types = "c")
     AlexandrovDataAnnotated <- dplyr::left_join(AlexandrovDataProcessed, sampleOrigin, by = "sampleNames")
 
     return(AlexandrovDataAnnotated)
 }
 
 annotateAlexandrovData <- function(AlexandrovDataProcessed, reportedKataegisFoci) {
-
     # convert data to VRanges and add a column which specifies if a variant lies within an kataegis foci
     AlexandrovDataAnnotated <- AlexandrovDataProcessed |>
         # dplyr::filter(sampleNames %in% unique(reportedKataegisFoci$sampleNames)) |>
@@ -211,17 +209,17 @@ convertToMaf <- function(AlexandrovDataAnnotated) {
             Variant_Type = "SNP"
         ) |>
         dplyr::select(
-            .$Hugo_Symbol,
-            Chromosome = .$seqnames,
-            Start_Position = .$start,
-            End_Position = .$end,
-            Reference_Allele = .$ref,
-            Tumor_Seq_Allele2 = .$alt,
-            .$Variant_Classification,
-            .$Variant_Type,
-            Tumor_Sample_Barcode = .$sampleNames
+            Hugo_Symbol,
+            Chromosome = seqnames,
+            Start_Position = start,
+            End_Position = end,
+            Reference_Allele = ref,
+            Tumor_Seq_Allele2 = alt,
+            Variant_Classification,
+            Variant_Type,
+            Tumor_Sample_Barcode = sampleNames
         ) |>
-        dplyr::group_by(.$Tumor_Sample_Barcode) |>
+        dplyr::group_by(Tumor_Sample_Barcode) |>
         dplyr::group_split()
 
     return(AlexandrovDataMaf)

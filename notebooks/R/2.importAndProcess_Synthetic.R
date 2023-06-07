@@ -139,17 +139,17 @@ convertoMafSynth <- function(syntheticData) {
             Variant_Type = "SNP",
         ) |>
         dplyr::select(
-            .$Hugo_Symbol,
-            Chromosome = .$seqnames,
-            Start_Position = .$start,
-            End_Position = .$end,
-            Reference_Allele = .$ref,
-            Tumor_Seq_Allele2 = .$alt,
-            .$Variant_Classification,
-            .$Variant_Type,
-            Tumor_Sample_Barcode = .$sampleNames
+            Hugo_Symbol,
+            Chromosome = seqnames,
+            Start_Position = start,
+            End_Position = end,
+            Reference_Allele = ref,
+            Tumor_Seq_Allele2 = alt,
+            Variant_Classification,
+            Variant_Type,
+            Tumor_Sample_Barcode = sampleNames
         ) |>
-        dplyr::group_by(.$Tumor_Sample_Barcode) |>
+        dplyr::group_by(Tumor_Sample_Barcode) |>
         dplyr::group_split()
 
 
