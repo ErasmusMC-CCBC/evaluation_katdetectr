@@ -1,3 +1,4 @@
+from SigProfilerMatrixGenerator import install as genInstall
 from SigProfilerSimulator import SigProfilerSimulator as sigSim
 from SigProfilerClusters import SigProfilerClusters as hp
 
@@ -8,7 +9,6 @@ sigSim.SigProfilerSimulator(
 	contexts = ['288'],
 	simulations=100,
 	overlap=True)
-
 
 hp.analysis(
 	project="results_SigProfiler",

@@ -38,7 +38,8 @@ runSigProfilerClustered <- function(data){
 
 
     startTime <- base::proc.time()
-    system("python ../../prunSigProfiler.py")
+    #system("python ../../prunSigProfiler.py")
+    system("python3 ../python/prunSigProfiler.py")
     #system("python3 ../../evaluation_katdetectr/python/prunSigProfiler.py")
     runTime <- base::proc.time() - startTime
 

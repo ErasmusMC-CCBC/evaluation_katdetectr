@@ -64,7 +64,7 @@ runSeqkat <- function(genomicVariants){
 
     # Convert to SeqKat-friendly formats.
     data <- GenomicRanges::sort(genomicVariants) |>
-        tibble::as_tibble(genomicVariants) |>
+        as_tibble() |>
         dplyr::select(chr = seqnames, location = start, REF = ref, ALT = alt)
 
     # Write to temp. file.
@@ -157,8 +157,8 @@ runKatdetectr <- function(genomicVariants, minSizeKataegis = 6, IMDcutoff = 1000
 
 runClusteredMutations <- function(genomicVariants){
 
-    print(i)
-    i <<- i+1
+    #print(i)
+    #i <<- i+1
 
     startTime <- base::proc.time()
 

@@ -10,9 +10,9 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(VariantAnnotation)
-library(SeqKat)
-source(file = "R/function_package_workflows.R")
-source(file = "R/runSigProfiler.R")
+#library(SeqKat)
+source(file = "../R/function_package_workflows.R")
+source(file = "../R/runSigProfiler.R")
 ```
 
 Manual generation of a VRanges object that contains 10 overlapping variants
