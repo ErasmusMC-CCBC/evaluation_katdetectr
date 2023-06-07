@@ -19,14 +19,18 @@ runSigProfiler <- function(dataAlexandrov = "data/alexandrov_data_processed.RDat
 }
 
 
-runSigProfilerClustered <- function() {
+
+data <- alexandrovData$genomicVariants[[1]]
+
+runSigProfilerClustered <- function(data) {
+
     sampleName <- unique(data@sampleNames)
 
-    # create new dir
+    # Create a directory for the sample and move into it.
     dir.create(path = paste0("", sampleName), showWarnings = FALSE)
     setwd(dir = paste0("", sampleName))
 
-    # convert data to a sigprofiler friendly format
+    # Convert data to a sigprofiler friendly format
     GenomeInfoDb::seqlevelsStyle(data) <- "NCBI"
     vrFormatted <- data |>
         tibble::as_tibble() |>
@@ -39,16 +43,11 @@ runSigProfilerClustered <- function() {
         ) |>
         dplyr::select(CancerType, sampleNames, NGS_method, referenceGenome, mutType, seqnames, start, end, ref, alt, mutss)
 
-    # write data to disk as a .txt file
-    write.table(vrFormatted, file = "data_SigProf.txt", row.names = FALSE, col.names = FALSE, quote = FALSE, sep = "\t")
-    # add the header to the data.txt
-    file.copy("data/header.txt", "data_SigProf_header.txt", overwrite = TRUE)
-    file.append("data_SigProf_header.txt", "data_SigProf.txt")
-    unlink("data_SigProf.txt")
-
+    # Write to a .txt file.
+    write.table(vrFormatted, file = "data_SigProf.txt", row.names = FALSE, col.names = TRUE, quote = FALSE, sep = "\t")
 
     startTime <- base::proc.time()
-    system("python ../../prunSigProfiler.py")
+    system("python3 ../python/prunSigProfiler.py")
     runTime <- base::proc.time() - startTime
 
     if (file.exists("./output/vcf_files_corrected/results_SigProfiler_clustered/subclasses/class2/results_SigProfiler_clustered_class2.txt")) {

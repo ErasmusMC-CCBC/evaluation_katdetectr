@@ -2,15 +2,18 @@
 i <- 1
 
 # Run all tools on Alexandrov et al. dataset
-runTools_Alexandrov <- function(data = "data/alexandrov_data_processed.RData") {
+runTools_Alexandrov <- function(data = "data/alexandrov_data_processed.RData", subset = FALSE) {
     futile.logger::flog.info("Running all R-based tools on Alexandrov et al. (2013) dataset")
 
     futile.logger::flog.info("Loading RData object: Alexandrov et al. (2013) dataset")
     alexandrovData <- NULL
     load(file = data, verbose = FALSE)
 
-    # Test with only 10 samples.
-    alexandrovData$genomicVariants <- alexandrovData$genomicVariants[1:10]
+    # Test with only 5 samples.
+    if (subset) {
+        alexandrovData$genomicVariants <- alexandrovData$genomicVariants[1:5]
+        alexandrovData$genomicVariantsMAF <- alexandrovData$genomicVariantsMAF[1:5]
+    }
 
     futile.logger::flog.info("Running katdetectr")
     resultsAlexKatdetectr <- dplyr::bind_rows(
@@ -29,9 +32,12 @@ runTools_Alexandrov <- function(data = "data/alexandrov_data_processed.RData") {
         chromosomes <- unique(GenomeInfoDb::seqnames(alexandrovData$genomicVariants[[1]]))
         base::lapply(chromosomes, function(x) {
             seq <- Biostrings::getSeq(BSgenome.Hsapiens.UCSC.hg19::BSgenome.Hsapiens.UCSC.hg19, x)
+            seq <- Biostrings::DNAStringSet(seq, use.names = TRUE)
 
             if (x == "chrX") x <- "chr23"
             if (x == "chrY") x <- "chr24"
+
+            names(seq) <- x
 
             # Write seq to fasta file.
             futile.logger::flog.debug("Writing chromosome %s to fasta file", x)
@@ -42,7 +48,8 @@ runTools_Alexandrov <- function(data = "data/alexandrov_data_processed.RData") {
                 base::dir.create("./data/perChromosome")
             }
 
-            Biostrings::writeXStringSet(Biostrings::DNAStringSet(seq), seqFile)
+            # Save seq to file as string.
+            write(as.character(seq), file = seqFile)
 
         })
 
@@ -102,12 +109,18 @@ runTools_Alexandrov <- function(data = "data/alexandrov_data_processed.RData") {
 }
 
 
-runTools_Synthetic <- function(data = "data/synthetic_data.RData") {
+runTools_Synthetic <- function(data = "data/synthetic_data.RData", subset = FALSE) {
     futile.logger::flog.info("Running all R-based tools on Alexandrov et al. (2013) dataset")
 
     futile.logger::flog.info("Loading RData object: synthetic dataset")
     dataSynthetic <- NULL
     load(data)
+
+    # Test with only 5 samples.
+    if (subset) {
+        dataSynthetic$genomicVariants <- dataSynthetic$genomicVariants[1:5]
+        dataSynthetic$genomicVariantsMAF <- dataSynthetic$genomicVariantsMAF[1:5]
+    }
 
     futile.logger::flog.info("Running katdetectr")
     # resultsSyntheticKatdetectrAMOC <- dplyr::bind_rows(lapply(dataSynthetic$genomicVariants, runKatdetectr, method = "AMOC"))
@@ -207,6 +220,9 @@ runMaftools <- function(genomicVariants) {
                 seqnames,
                 start = Start_Position, end = End_Position, totalVariants = nMuts, meanIMD = Avg_intermutation_dist, sampleNames, runTime
             )
+
+        # Remove output file.
+        base::unlink(outFile)
     } else {
         results <- tibble::tibble(seqnames = NA, start = NA, end = NA, totalVariants = NA, meanIMD = NA, sampleNames = base::unique(genomicVariants$Tumor_Sample_Barcode), runTime = runTime[3])
     }
@@ -216,8 +232,6 @@ runMaftools <- function(genomicVariants) {
 
 
 runSeqkat <- function(genomicVariants) {
-
-    require(SeqKat)
 
     # Convert to SeqKat-friendly formats.
     data <- GenomicRanges::sort(genomicVariants) |>
@@ -267,7 +281,6 @@ runSeqkat <- function(genomicVariants) {
     }
     return(results)
 }
-
 
 
 runKatdetectr <- function(genomicVariants, minSizeKataegis = 6, test.stat = "Exponential", penalty = "BIC", pen.value = 0, minseglen = 2) {
