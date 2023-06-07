@@ -10,7 +10,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(VariantAnnotation)
-#library(SeqKat)
+library(SeqKat)
 source(file = "../R/function_package_workflows.R")
 source(file = "../R/runSigProfiler.R")
 ```
@@ -30,17 +30,30 @@ startlocationOverlappingSNVs <- c(1003484, 1007628, 1050178, 1050184, 1020000, 1
 endlocationOverlappingSNVs <- startlocationOverlappingSNVs
 
 testTib <- tibble(
-    sampleName = "testSyntheticOverlapSample",
+    sampleNames = "testSyntheticOverlapSample",
     seqnames = "chr1",
     start = c(startLocationsRandomSNVs, startLocationKataegisSNVs, startLocationINDEL, startlocationOverlappingSNVs),
-    end = c(endLocationsRandomSNVs, endLocationKataegisSNVs, endLocationINDEL, endlocationOverlappingSNVs),
-    ref = "A",
-    alt = "T"
-)
+    end = c(endLocationsRandomSNVs, endLocationKataegisSNVs, endLocationINDEL, endlocationOverlappingSNVs)
+) |> 
+    mutate(
+        ref =  BSgenome::getSeq(
+            BSgenome.Hsapiens.UCSC.hg19::BSgenome.Hsapiens.UCSC.hg19,
+            names = "chr1",
+            start = start,
+            end = end,
+            as.character = TRUE),
+        alt = base::vapply(
+            ref,
+            FUN = function(x){
+                nucleotides <- c("A", "T", "C", "G")
+                base::sample(nucleotides[nucleotides != x], size = 1)
+            }, FUN.VALUE = 's')
+    ) 
 
 testVR <- testTib |> 
     GenomicRanges::makeGRangesFromDataFrame(keep.extra.columns = TRUE) |> 
-    VariantAnnotation::makeVRangesFromGRanges()
+    VariantAnnotation::makeVRangesFromGRanges() |> 
+    GenomicRanges::sort()
 
 testMAF <- testVR |> 
     tibble::as_tibble() |>
@@ -62,17 +75,47 @@ testMAF <- testVR |>
     )
 ```
 
-Run katdetectr
+Run packages
 ```{r}
-kd <- katdetectr::detectKataegis(testVR)
-katdetectr::rainfallPlot(kd)
+kd <- katdetectr::detectKataegis(genomicVariants = testVR)
+mf <- runMaftools(genomicVariants = testMAF)
+sq <- runSeqkat(genomicVariants = testVR)
+ka <- runKataegis(genomicVariants = testVR)
+cm <- runClusteredMutations(genomicVariants = testVR)
+sig <- runSigProfilerClustered(data = testVR)
 ```
 
-Run other packages
 ```{r}
-runMaftools(genomicVariants = testMAF)
-runSeqkat(genomicVariants = testVR)
-runKataegis(genomicVariants = testVR)
-runClusteredMutations(genomicVariants = testVR)
+data <- testVR
+
+sampleName <- unique(data@sampleNames)
+
+# create new dir
+dir.create(path = paste0("", sampleName), showWarnings = FALSE)
+setwd(dir = paste0("", sampleName))
+
+# convert data to a sigprofiler friendly format
+GenomeInfoDb::seqlevelsStyle(data) <- 'NCBI'
+vrFormatted <- data |> tibble::as_tibble() |>
+    mutate(
+        CancerType = ".",
+        referenceGenome = "GRCh37",
+        NGS_method = ".",
+        mutss = "SOMATIC",
+        mutType = "SNV"
+    ) |>
+    dplyr::select(CancerType, sampleNames, NGS_method, referenceGenome, mutType, seqnames, start, end, ref, alt, mutss)
+
+# write data to disk as a .txt file
+write.table(vrFormatted, file = "data_SigProf.txt", row.names = FALSE, col.names = FALSE, quote = FALSE, sep = "\t")
+# add the header to the data.txt
+file.copy("data/header.txt", "data_SigProf_header.txt", overwrite = TRUE)
+file.append("data_SigProf_header.txt", "data_SigProf.txt")
+unlink("data_SigProf.txt")
+
+
+startTime <- base::proc.time()
+#system("python ../../prunSigProfiler.py")
+system("python3 ../python/prunSigProfiler.py")
 ```
 
