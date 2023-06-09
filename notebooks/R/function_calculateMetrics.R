@@ -1,4 +1,5 @@
-# function for calculating performance metrics. x should be a dataframe which contains columns that specify the number of true positives, false positives, true negatives and false negatives i.e. all info of a confusion matrix
+# Calculates performance metrics.
+# x should be a dataframe which contains columns that specify the number of true positives, false positives, true negatives and false negatives i.e. all info of a confusion matrix
 calculateMetrics <- function(x){
 
     metrics <- tibble::tibble(

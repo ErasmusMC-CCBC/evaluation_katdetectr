@@ -1,20 +1,13 @@
 # Evaluation and comparison of katdetectr
 
-![license](https://img.shields.io/badge/license-GPL--3-blue.svg) [![GitHub issues](https://img.shields.io/github/issues/ErasmusMC-CCBC/katdetectr.svg)]() ![rversion](https://img.shields.io/badge/R%20version-%3E4.1.0-lightgrey.svg)
+![license](https://img.shields.io/badge/license-GPL--3-blue.svg) ![GitHub issues](https://img.shields.io/github/issues/ErasmusMC-CCBC/katdetectr.svg) ![rversion](https://img.shields.io/badge/R%20version-%3E4.1.0-lightgrey.svg)
 
-# Introduction
+## Introduction
 
-This repository contains all the custom scripts used in the evaluation and comparison of [katdetectr]('https://github.com/ErasmusMC-CCBC/katdetectr/') as described in the corresponding Technical Note (under submission).
+This repository contains all the custom scripts used in the evaluation and comparison of [katdetectr](https://github.com/ErasmusMC-CCBC/katdetectr/) as described in the corresponding [manuscript](https://www.biorxiv.org/content/10.1101/2022.07.11.499364v3) (*currently under review*).
 
-# Usage
+## Reproducibility
 
-All required files were deposited on [Zenodo](https://zenodo.org/record/6623289#.YqBxHi8Rr0o%5D).
-These can directly be downloaded using `zen4R` and be used as input.
+All produced input and output for reproduction of the evaluation of kataegis detection packages as detailed within our manuscript were deposited on [Zenodo](https://doi.org/10.5281/zenodo.6810477).
 
-```R
-# Increase the timeout (due to some large files).
-options(timeout=5000)
-
-# Download the required files into the data/ folder (~1GB).
-zen4R::download_zenodo(doi = "10.5281/zenodo.6810477", path = 'data/')
-```
+The evaluation of the kataegis detection can be reproduced by following the Jupyter notebook available in the `notebooks` directory. The notebook can be run locally or on [Google Colab](https://colab.research.google.com/github/ErasmusMC-CCBC/katdetectr-evaluation/blob/main/notebooks/katdetectr-evaluation.ipynb).
