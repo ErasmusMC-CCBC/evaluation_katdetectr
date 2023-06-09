@@ -1,26 +1,34 @@
-runSigProfiler <- function(dataAlexandrov = "data/alexandrov_data_processed.RData", dataSynthetic = "data/synthetic_data_processed.RData") {
+runSigProfiler <- function(pathAlexandrov = "data/alexandrov_data_processed.RData", pathSynthetic = "data/synthetic_data.RData", subset = FALSE) {
+
+    futile.logger::flog.info("Loading Alexandrov et al. (2013) data")
+    load(pathAlexandrov)
+
+    futile.logger::flog.info("Loading synthetic data")
+    load(pathSynthetic)
+
+    if (subset) {
+        dataSynthetic$genomicVariants <- dataSynthetic$genomicVariants[1:5]
+    }
+
+    # Subset the samples to first 5 samples.
+    if (subset) {
+        alexandrovData$genomicVariants <- alexandrovData$genomicVariants[1:5]
+    }
+
+    # Create the output and tmp folder to run in.
     dir.create("data/SigProfilerClusters/")
     setwd(dir = "data/SigProfilerClusters/")
 
-    futile.logger::flog.info("Loading Alexandrov et al. (2013) data")
-    load(dataAlexandrov)
-
     futile.logger::flog.info("Running SigProfiler - Alexandrov et al. (2013)")
 
-    allResultsAlexandrov <- dplyr::bind_rows(base::lapply(alexandrovData$genomicVariants["LUAD-E01014"], runSigProfilerClustered))
+    allResultsAlexandrov <- dplyr::bind_rows(base::lapply(alexandrovData$genomicVariants, runSigProfilerClustered))
     save(object = allResultsAlexandrov, file = "data/allResultsAlexandrovSigProfiler.Rdata")
-
-    futile.logger::flog.info("Loading synthetic data")
-    load(dataSynthetic)
 
     futile.logger::flog.info("Running SigProfiler - Synthetic dataset")
     allResultsSynthetic <- dplyr::bind_rows(base::lapply(dataSynthetic$genomicVariants, runSigProfilerClustered))
     save(object = allResultsSynthetic, file = "data/allResultsSyntheticSigProfiler.Rdata")
 }
 
-
-
-data <- alexandrovData$genomicVariants[[1]]
 
 runSigProfilerClustered <- function(data) {
 
@@ -47,7 +55,7 @@ runSigProfilerClustered <- function(data) {
     write.table(vrFormatted, file = "data_SigProf.txt", row.names = FALSE, col.names = TRUE, quote = FALSE, sep = "\t")
 
     startTime <- base::proc.time()
-    system("python3 ../python/prunSigProfiler.py")
+    system("python3 ../../../../python/prunSigProfiler.py")
     runTime <- base::proc.time() - startTime
 
     if (file.exists("./output/vcf_files_corrected/results_SigProfiler_clustered/subclasses/class2/results_SigProfiler_clustered_class2.txt")) {
