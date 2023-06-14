@@ -4,7 +4,7 @@
 
 ## Introduction
 
-This repository contains all the custom scripts used in the evaluation and comparison of [katdetectr](https://github.com/ErasmusMC-CCBC/katdetectr/) as described in the corresponding [manuscript](https://www.biorxiv.org/content/10.1101/2022.07.11.499364v3) (*currently under review*).
+This repository contains all the custom scripts used in the evaluation and comparison of [katdetectr](https://github.com/ErasmusMC-CCBC/katdetectr/) as described in the corresponding [manuscript](https://www.biorxiv.org/content/10.1101/2022.07.11.499364v3) (_currently under review_).
 
 ## Reproducibility
 
