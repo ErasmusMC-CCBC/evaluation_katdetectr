@@ -10,7 +10,4 @@ This repository contains all the custom scripts used in the evaluation and compa
 
 All produced input and output for reproduction of the evaluation of kataegis detection packages as detailed within our manuscript were deposited on [Zenodo](https://doi.org/10.5281/zenodo.6810477).
 
-The evaluation of the kataegis detection can be reproduced by following the Jupyter notebook available in the `notebooks` directory. The notebook can be run locally or viewed online on [Google Colab](https://colab.research.google.com/github/ErasmusMC-CCBC/evaluation_katdetectr/blob/main/notebooks/1.EvaluatePackages.ipynb).
-
-> **Note**  
-> The notebook requires several (GitHub and Bioconductor) packages to be installed which unfortunately has some issues on Google Colab. Therefore, we recommend to run the notebook locally.
+The evaluation of the kataegis detection can be reproduced by following the Jupyter notebook available in the `notebooks` directory. The notebook can be run locally or viewed online on [GitHub](https://github.com/ErasmusMC-CCBC/evaluation_katdetectr/blob/main/notebooks/1.EvaluatePackages.ipynb).
