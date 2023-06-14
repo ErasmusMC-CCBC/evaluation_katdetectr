@@ -1,11 +1,10 @@
 # function for calculating performance metrics regarding labeling of variants
-calculateConfusionVariants <- function(x, variantData){
-
-    # get de original data on which the model made its prediction
+calculateConfusionVariants <- function(x, variantData) {
+    # get the original data on which the model made its prediction
     data <- variantData$genomicVariants[[base::unique(x$sampleNames)]]
 
     # if a kataegis foci is detected in this sample
-    if(base::unique(x$detectedKataegisInSample)){
+    if (base::unique(x$detectedKataegisInSample)) {
         # convert the the tibble to a granges
         gr <- GenomicRanges::makeGRangesFromDataFrame(x, keep.extra.columns = TRUE)
         # subset the original data by the kataegis foci in order to obtain the variants that were classified as kataegis variants

@@ -269,5 +269,3 @@ kd124625_1_50_100@genomicVariants |>
     dplyr::select(!revmap) |> 
     write.csv("../results/rainfall_plot_data_124625_1_50_100.csv")
 ```
-
-
